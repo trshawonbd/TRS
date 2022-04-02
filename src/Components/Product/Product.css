@@ -5,4 +5,11 @@
 }
 .t-shirt img{
     height: 250px;
+    display: flex;
+    justify-content: center;
+    
+}
+.add-btn{
+    background-color: orange;
+    padding: 5px;
 }
