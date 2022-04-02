@@ -8,12 +8,12 @@ const Header = () => {
         textDecoration: "underline"
     };
     return (
-        <div>
+        <div className='flex justify-around items-center bg-teal-100'>
             <div className="img-container">
                 <img src={logo} alt="" srcset="" />
             </div>
             <div className="link-container">
-                <NavLink
+                <NavLink className = 'li'
                     to="/"
                     style={({ isActive }) =>
                         isActive ? activeStyle : undefined
@@ -21,7 +21,7 @@ const Header = () => {
                 >
                     
                 </NavLink>
-                <NavLink
+                <NavLink className = 'li'
                     to="/home"
                     style={({ isActive }) =>
                         isActive ? activeStyle : undefined
@@ -29,7 +29,7 @@ const Header = () => {
                 >
                     Home
                 </NavLink>
-                <NavLink
+                <NavLink className = 'li'
                     to="/shop"
                     style={({ isActive }) =>
                         isActive ? activeStyle : undefined
@@ -37,7 +37,7 @@ const Header = () => {
                 >
                    Shop
                 </NavLink>
-                <NavLink
+                <NavLink className = 'li'
                     to="/order"
                     style={({ isActive }) =>
                         isActive ? activeStyle : undefined
@@ -45,7 +45,7 @@ const Header = () => {
                 >
                    Order
                 </NavLink>
-                <NavLink
+                <NavLink className = 'li'
                     to="/about"
                     style={({ isActive }) =>
                         isActive ? activeStyle : undefined
