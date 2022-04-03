@@ -9,10 +9,14 @@ import Shop from './Components/Shop/Shop';
 import Order from './Components/Order/Order';
 import ProductDetails from './Components/ProductDetails/ProductDetails';
 import { createContext } from 'react';
-export const ProductsContext = createContext([])
+import useProducts from './hooks/useProducts';
+export const mainContext = createContext([])
 function App() {
-  return (
-    
+  const [products, setProducts] = useProducts([])
+
+/*   let value = {prod,setProd}
+ */  return (
+    <mainContext.Provider value={[products, setProducts]}>
     <div className="App">
       <Promotion></Promotion>
       <Header></Header>
@@ -26,6 +30,7 @@ function App() {
 
       </Routes>
     </div>
+    </mainContext.Provider>
   );
 }
 

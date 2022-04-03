@@ -18,8 +18,8 @@ const Shop = () => {
         setCart(newCart)
     }
 
-    const details =(selectedProduct) =>{
-        
+    const details = (selectedProduct) => {
+
     }
     let value = { products, setProducts, addToCart, cart, setCart, details }
     /* console.log(products) */
