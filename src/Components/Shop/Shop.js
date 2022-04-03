@@ -2,6 +2,7 @@ import React, { createContext, useState } from 'react';
 import useProducts from '../../hooks/useProducts';
 import Order from '../Order/Order';
 import Product from '../Product/Product';
+import ProductDetails from '../ProductDetails/ProductDetails';
 import './Shop.css'
 
 
@@ -16,7 +17,11 @@ const Shop = () => {
         newCart = [...cart, selectedProduct]
         setCart(newCart)
     }
-    let value = { products, setProducts, addToCart, cart, setCart }
+
+    const details =(selectedProduct) =>{
+        
+    }
+    let value = { products, setProducts, addToCart, cart, setCart, details }
     /* console.log(products) */
     return (
         <ProductsContext.Provider value={value}>
