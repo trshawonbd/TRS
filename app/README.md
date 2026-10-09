@@ -1,6 +1,6 @@
 # দেশি ডায়েট থালা (Deshi Diet Thala)
 
-A family meal-planning web app (installable PWA): 145+ healthy, easy, halal recipes, a spin-the-wheel picker,
+A family meal-planning web app (installable PWA): 114 healthy, easy, halal recipes, a spin-the-wheel picker,
 shared favourites, "today's dish", have/need ingredient checks, a shared shopping list and push notifications.
 
 - Source: `app/src/*` — build with `./app/build.sh`, which writes `docs/index.html`.
