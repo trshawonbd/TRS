@@ -384,6 +384,11 @@ body.lock { overflow: hidden; }
 .msg.new { background: var(--saffron-soft); }
 .msg small, .act small { color: var(--muted); font-size: .8rem; }
 .addrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.sform { display: grid; gap: 10px; }
+.quick .chip { min-height: 36px; font-size: .9rem; }
+.srow { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+.remind { min-width: 64px; border-radius: 12px; background: var(--saffron-soft); color: var(--ink); font-weight: 700; font-size: .8rem; display: grid; place-items: center; align-content: center; gap: 0; line-height: 1.2; }
+.remind:disabled { opacity: .5; }
 .shop { display: grid; gap: 6px; }
 .item { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: center; text-align: left; padding: 10px 12px; border-radius: 12px; background: var(--bg); min-height: 48px; }
 .item small { display: block; color: var(--muted); font-size: .8rem; }
@@ -2857,6 +2862,8 @@ async function setPlan(rid) {
   const others = S.members.filter((m) => m.user_id !== S.user.id).map((m) => m.user_id);
   if (others.length) sendNotify(others, "আজকের রান্না ঠিক হয়েছে", `${myName()} বেছেছেন: ${R[rid].name}`, rid);
 }
+const QUICK = ["ডায়াপার", "দুধ", "ডিম", "পাউরুটি", "ওষুধ", "টিস্যু", "সাবান", "চাল", "পেঁয়াজ", "শিশুর খাবার"];
+const shopSkip = new Set();
 const myName = () => S.members.find((m) => m.user_id === S.user?.id)?.name || "পরিবারের সদস্য";
 const localIng = () => { try { return JSON.parse(store.get("ing-" + today()) || "{}"); } catch (e) { return {}; } };
 function ingStatus(rid, idx) {
@@ -3023,26 +3030,60 @@ function renderBazar() {
   }
   const unread = S.inbox.filter((x) => !x.read_at);
   const open = S.shop.filter((x) => !x.bought), done = S.shop.filter((x) => x.bought).slice(0, 15);
+  const others = S.members.filter((m) => m.user_id !== S.user.id);
   box.innerHTML = `
     <div class="card"><div class="how-head"><h2>বার্তা</h2>${unread.length ? '<button class="link" id="read-all">সব পড়া হয়েছে</button>' : ""}</div>
       ${S.inbox.length ? S.inbox.slice(0, 15).map((n) => `<div class="msg${n.read_at ? "" : " new"}"><b>${esc(n.title)}</b><span>${esc(n.body)}</span><small>${esc(nameOf(n.from_user))} · ${ago(n.created_at)}</small>${n.recipe_id && R[n.recipe_id] ? `<button class="link" data-r="${n.recipe_id}">রেসিপি দেখুন</button>` : ""}</div>`).join("") : '<p class="muted">এখনো কোনো বার্তা আসেনি।</p>'}
     </div>
     <div class="card"><h2>বাজারের তালিকা</h2>
-      <form id="shop-add" class="addrow"><input id="shop-text" class="search" maxlength="200" placeholder="যেমন: ১ কেজি টমেটো" aria-label="নতুন জিনিস"><button class="pbtn">যোগ</button></form>
-      <div class="shop">${open.map((x) => `<button class="item" data-id="${x.id}"><span class="box"></span><span>${esc(x.text)}<small>${esc(nameOf(x.added_by))}${x.assigned_to ? " → " + esc(nameOf(x.assigned_to)) : ""}${x.recipe_id && R[x.recipe_id] ? " · " + esc(R[x.recipe_id].name) : ""}</small></span></button>`).join("") || '<p class="muted">কিছু কেনা বাকি নেই।</p>'}</div>
+      <form id="shop-add" class="sform">
+        <input id="shop-text" class="search" maxlength="200" placeholder="যা লাগবে লিখুন: ডায়াপার, দুধ, ওষুধ…" aria-label="নতুন জিনিস">
+        <div class="chips quick">${QUICK.map((q) => `<button type="button" class="chip" data-q="${esc(q)}">+ ${esc(q)}</button>`).join("")}</div>
+        ${others.length ? `<p class="lbl" style="margin:0">কাকে জানাবেন</p><div class="chips" id="notify-to">${others.map((o) => `<button type="button" class="chip" data-u="${o.user_id}" aria-pressed="${!shopSkip.has(o.user_id)}">🔔 ${esc(o.name)}</button>`).join("")}</div>`
+          : '<p class="note">পরিবারে আর কেউ যোগ দিলে এখান থেকে তাঁকে সাথে সাথে জানাতে পারবেন। "পরিবার" ট্যাব থেকে আমন্ত্রণ পাঠান।</p>'}
+        <button class="pbtn">${others.length ? "যোগ করুন ও জানান" : "যোগ করুন"}</button>
+      </form>
+      <div class="shop">${open.map((x) => `<div class="srow"><button class="item" data-id="${x.id}"><span class="box"></span><span>${esc(x.text)}<small>${esc(nameOf(x.added_by))}${x.assigned_to ? " → " + esc(nameOf(x.assigned_to)) : ""}${x.recipe_id && R[x.recipe_id] ? " · " + esc(R[x.recipe_id].name) : ""}</small></span></button>${others.length ? `<button class="remind" data-ring="${x.id}" aria-label="${esc(x.text)} নিয়ে আবার জানান">🔔<span>জানান</span></button>` : ""}</div>`).join("") || '<p class="muted">কিছু কেনা বাকি নেই।</p>'}</div>
       ${done.length ? `<p class="lbl" style="margin:8px 0 0">কেনা হয়েছে</p><div class="shop">${done.map((x) => `<button class="item got" data-id="${x.id}"><span class="box"></span><span>${esc(x.text)}<small>কিনেছেন ${esc(nameOf(x.bought_by))}</small></span></button>`).join("")}</div>` : ""}
     </div>`;
   const ra = $("read-all");
   if (ra) ra.onclick = async () => { const now = new Date().toISOString(); S.inbox.forEach((x) => (x.read_at = x.read_at || now)); refreshAll(); await sb.from("notifications").update({ read_at: now }).eq("to_user", S.user.id).is("read_at", null); };
   box.querySelectorAll("[data-r]").forEach((b) => (b.onclick = () => openRecipe(b.dataset.r)));
+  box.querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => {
+    const i = $("shop-text"), v = i.value.trim();
+    i.value = v ? v + ", " + b.dataset.q : b.dataset.q;
+    i.focus();
+  }));
+  box.querySelectorAll("#notify-to [data-u]").forEach((b) => (b.onclick = () => {
+    const u = b.dataset.u;
+    shopSkip.has(u) ? shopSkip.delete(u) : shopSkip.add(u);
+    b.setAttribute("aria-pressed", !shopSkip.has(u));
+  }));
   $("shop-add").onsubmit = async (e) => {
     e.preventDefault();
-    const t = $("shop-text").value.trim();
-    if (!t) return;
+    const raw = $("shop-text").value.trim();
+    if (!raw) return toast("কী লাগবে লিখুন");
+    const items = raw.split(/[,،\n]+/).map((s) => s.trim()).filter(Boolean).slice(0, 20);
+    const to = others.map((o) => o.user_id).filter((u) => !shopSkip.has(u));
     $("shop-text").value = "";
-    await sb.from("shopping_items").insert({ family_id: S.family.id, text: t.slice(0, 200), added_by: S.user.id });
+    const { error } = await sb.from("shopping_items").insert(items.map((t) => ({ family_id: S.family.id, text: t.slice(0, 200), added_by: S.user.id, assigned_to: to[0] || null })));
+    if (error) return toast("যোগ হয়নি, আবার চেষ্টা করুন");
     await loadShop(); refreshAll();
+    logActivity(`বাজারের তালিকায় যোগ করেছেন: ${items.join(", ")}`);
+    if (to.length) {
+      const res = await sendNotify(to, items.length === 1 ? `লাগবে: ${items[0]}` : `বাজারে লাগবে ${bn(items.length)}টা জিনিস`, `${myName()} যোগ করেছেন: ${items.join(", ")}`, null);
+      if (res) toast(res.sent ? "যোগ হয়েছে, ফোনে নোটিফিকেশন গেছে" : "যোগ হয়েছে। ওনার ফোনে নোটিফিকেশন চালু নেই, অ্যাপ খুললে দেখবেন।");
+    } else toast("তালিকায় যোগ হয়েছে");
   };
+  box.querySelectorAll("[data-ring]").forEach((b) => (b.onclick = async () => {
+    const it = S.shop.find((x) => x.id === b.dataset.ring);
+    if (!it) return;
+    const to = it.assigned_to && it.assigned_to !== S.user.id ? [it.assigned_to] : others.map((o) => o.user_id);
+    b.disabled = true;
+    const res = await sendNotify(to, `মনে করিয়ে দেওয়া: ${it.text}`, `${myName()} মনে করিয়ে দিয়েছেন, এটা কেনা বাকি।`, it.recipe_id);
+    b.disabled = false;
+    if (res) toast(`${to.map(nameOf).join(", ")}-কে জানানো হয়েছে`);
+  }));
   box.querySelectorAll(".item").forEach((b) => (b.onclick = async () => {
     const it = S.shop.find((x) => x.id === b.dataset.id);
     if (!it) return;
