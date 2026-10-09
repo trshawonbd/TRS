@@ -1,7 +1,8 @@
 <div class="app">
   <header class="top">
     <div><p class="eyebrow" id="greet"></p><h1 id="title">Today</h1></div>
-    <button class="iconbtn" id="bell" aria-label="Messages and shopping"><svg viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="badge num" id="bell-n" hidden></span></button>
+    <div class="top-act"><button class="iconbtn" id="settings" aria-label="Language and theme"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+    <button class="iconbtn" id="bell" aria-label="Messages and shopping"><svg viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="badge num" id="bell-n" hidden></span></button></div>
   </header>
   <main>
     <section class="screen" id="s-home"></section>
@@ -61,6 +62,7 @@
   <div class="langslot"></div>
   <span class="brandmark" aria-hidden="true"><i></i></span>
   <h1>Deshi Diet Thala</h1>
+  <div class="invite" id="auth-invite" role="status" hidden></div>
   <p class="muted">Healthy, easy home cooking for the whole family. Share favourites, plan today's dish and send shopping requests to each other.</p>
   <div class="seg" role="tablist"><button data-auth-tab="login" aria-selected="true">Log in</button><button data-auth-tab="signup" aria-selected="false">Sign up</button><button data-auth-tab="phone" aria-selected="false">Phone</button></div>
   <form id="auth-login" class="form">
@@ -72,7 +74,7 @@
     <label>Your name<input class="field" id="su-name" maxlength="40" autocomplete="name" required></label>
     <label>Email<input class="field" id="su-email" type="email" autocomplete="email" required></label>
     <label>Password<input class="field" id="su-pass" type="password" autocomplete="new-password" minlength="6" required></label>
-    <div class="kind"><label><input type="radio" name="su-kind" value="family" checked> Family</label><label><input type="radio" name="su-kind" value="single"> Just me</label></div>
+    <div class="kind" id="su-kind-row"><label><input type="radio" name="su-kind" value="family" checked> Family</label><label><input type="radio" name="su-kind" value="single"> Just me</label></div>
     <button class="btn primary block">Create account</button>
   </form>
   <form id="auth-phone" class="form" hidden>

@@ -15,7 +15,28 @@ const N = (v) => (BNL ? String(v).replace(/\d/g, (d) => "০১২৩৪৫৬�
 document.documentElement.lang = LANG;
 function setLang(l) { store.set("lang", l); location.reload(); }
 const langPicker = () => `<span class="langsw" role="group" aria-label="Language">${[["en", "English"], ["bn", "বাংলা"]].map(([k, l]) => `<button type="button" data-lang="${k}" aria-pressed="${LANG === k}">${l}</button>`).join("")}</span>`;
-const bindLang = (root) => root.querySelectorAll("[data-lang]").forEach((b) => (b.onclick = () => { if (b.dataset.lang !== LANG) setLang(b.dataset.lang); }));
+const bindLang = (root) => {
+  root.querySelectorAll("[data-lang]").forEach((b) => (b.onclick = () => { if (b.dataset.lang !== LANG) setLang(b.dataset.lang); }));
+  root.querySelectorAll("[data-theme-v]").forEach((b) => (b.onclick = () => { setTheme(b.dataset.themeV); root.querySelectorAll("[data-theme-v]").forEach((x) => x.setAttribute("aria-pressed", x === b)); }));
+};
+
+/* ---------- theme: light, dark or follow the phone ---------- */
+const themeNow = () => store.get("theme") || "auto";
+function setTheme(t) {
+  store.set("theme", t);
+  if (t === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  const dark = t === "dark" || (t === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", dark ? "#0F1511" : "#1F5C3D"));
+}
+setTheme(themeNow());
+const themePicker = () => `<span class="langsw" role="group" aria-label="Theme">${[["light", tr("Light", "দিন")], ["dark", tr("Dark", "রাত")], ["auto", tr("Auto", "অটো")]].map(([k, l]) => `<button type="button" data-theme-v="${k}" aria-pressed="${themeNow() === k}">${l}</button>`).join("")}</span>`;
+function openSettings() {
+  openSheet(`<h3>${tr("Language & theme", "ভাষা ও থিম")}</h3>
+    <div class="setrow"><span><b>${tr("Language", "ভাষা")}</b></span>${langPicker()}</div>
+    <div class="setrow"><span><b>${tr("Theme", "থিম")}</b><br><span class="small muted">${tr("Auto follows your phone", "অটো মানে ফোনের সেটিং অনুযায়ী")}</span></span>${themePicker()}</div>
+    <button class="btn soft block" id="set-done">${tr("Done", "ঠিক আছে")}</button>`);
+  bindLang($("bs-card")); $("set-done").onclick = closeSheet;
+}
 
 /* recipe text: data.js is English, data-bn.js holds the Bangla text for the same ids */
 if (BNL && typeof BN !== "undefined") {
@@ -63,6 +84,7 @@ const ICON = {
   bulb: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>',
   clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>',
+  moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
   globe: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>'
 };
 const TYPE_LABEL = BNL ? BN.TYPE : { "Main": "Mains", "Soup & Dal": "Soups & dal", "Salad": "Salads", "Snack": "Snacks", "Sweet": "Sweets", "Drink": "Drinks", "Side & Sauce": "Sides & sauces" };
@@ -207,6 +229,7 @@ function greeting() {
 }
 document.querySelectorAll(".tab").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
 $("bell").onclick = () => showTab("shop");
+$("settings").onclick = () => openSettings();
 
 /* ---------- home ---------- */
 const daySeed = () => { const d = new Date(); return d.getFullYear() * 400 + d.getMonth() * 31 + d.getDate(); };
@@ -608,7 +631,8 @@ async function renderFamily() {
   const rows = (items) => `<div class="card" style="gap:0;padding-block:6px">${items.join("")}</div>`;
   const rowlink = (sub, ic, t, s) => `<button class="rowlink" data-sub="${sub}"><span class="ic">${ic}</span><span>${t}${s ? `<small>${s}</small>` : ""}</span><span class="chev">${ICON.chev}</span></button>`;
   const langRow = `<div class="rowlink" style="cursor:default"><span class="ic">${ICON.globe}</span><span>${tr("Language", "ভাষা")}</span>${langPicker()}</div>`;
-  const common = [langRow,
+  const themeRow = `<div class="rowlink" style="cursor:default"><span class="ic">${ICON.moon}</span><span>${tr("Theme", "থিম")}</span>${themePicker()}</div>`;
+  const common = [langRow, themeRow,
     rowlink("plan", ICON.cal, tr("Weekly diet plan", "সাপ্তাহিক ডায়েট প্ল্যান"), tr("3 meals a day, no breakfast", "নাস্তা ছাড়া দিনে ৩ বেলা")),
     rowlink("kitchen", ICON.oven, tr("My kitchen", "আমার রান্নাঘর"), tr("Oven and air fryer settings", "ওভেন আর এয়ার ফ্রায়ার")),
     rowlink("tips", ICON.bulb, tr("Healthy swaps", "স্বাস্থ্যকর বদল"), tr("Lighter versions of everyday habits", "রোজকার অভ্যাসের হালকা বিকল্প"))];
@@ -713,7 +737,7 @@ async function enablePush() {
 
 /* ---------- auth & setup ---------- */
 function showAuth(show) { $("auth").hidden = !show; document.body.classList.toggle("lock", show); }
-function showSetup(show) { $("setup").hidden = !show; document.body.classList.toggle("lock", show); }
+function showSetup(show) { $("setup").hidden = !show; document.body.classList.toggle("lock", show); if (show && store.get("pendingJoin")) $("fam-code").value = store.get("pendingJoin"); }
 function authMsg(t, ok) { const m = $("auth-msg"); m.textContent = t || ""; m.className = "auth-msg" + (ok ? " ok" : ""); }
 function bindAuth() {
   document.querySelectorAll("[data-auth-tab]").forEach((b) => (b.onclick = () => {
@@ -728,13 +752,14 @@ function bindAuth() {
   };
   $("auth-signup").onsubmit = async (e) => {
     e.preventDefault();
-    const kind = document.querySelector("input[name=su-kind]:checked")?.value || "family";
+    const kind = invite?.name ? "family" : document.querySelector("input[name=su-kind]:checked")?.value || "family";
+    const back = location.origin + location.pathname + (invite?.name ? "?join=" + encodeURIComponent(invite.code) : "");
     authMsg(tr("Creating your account…", "অ্যাকাউন্ট তৈরি হচ্ছে…"), true);
-    const { data, error } = await sb.auth.signUp({ email: $("su-email").value.trim(), password: $("su-pass").value, options: { data: { name: $("su-name").value.trim(), kind }, emailRedirectTo: location.origin + location.pathname } });
+    const { data, error } = await sb.auth.signUp({ email: $("su-email").value.trim(), password: $("su-pass").value, options: { data: { name: $("su-name").value.trim(), kind }, emailRedirectTo: back } });
     if (error) return authMsg(/registered/i.test(error.message) ? tr("That email already has an account. Log in instead.", "এই ইমেইলে আগেই অ্যাকাউন্ট আছে। লগ ইন করুন।") : tr("Couldn't create the account: ", "অ্যাকাউন্ট তৈরি হয়নি: ") + error.message);
     if (!data.session) authMsg(tr("Check your email and tap the link, then log in here.", "ইমেইলে পাঠানো লিংকে চাপ দিন, তারপর এখানে লগ ইন করুন।"), true);
   };
-  $("auth-google").onclick = async () => { const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname } }); if (error) authMsg(tr("Google sign-in isn't switched on yet. Use email for now.", "গুগল দিয়ে লগ ইন এখনো চালু হয়নি। আপাতত ইমেইল ব্যবহার করুন।")); };
+  $("auth-google").onclick = async () => { const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname + (invite?.name ? "?join=" + encodeURIComponent(invite.code) : "") } }); if (error) authMsg(tr("Google sign-in isn't switched on yet. Use email for now.", "গুগল দিয়ে লগ ইন এখনো চালু হয়নি। আপাতত ইমেইল ব্যবহার করুন।")); };
   $("auth-phone").onsubmit = async (e) => {
     e.preventDefault();
     const phone = $("ph-num").value.replace(/\s/g, "");
@@ -748,6 +773,32 @@ function bindAuth() {
   $("setup-create").onsubmit = async (e) => { e.preventDefault(); const { data, error } = await sb.rpc("create_family", { fam_name: $("fam-name").value, fam_kind: "family" }); if (error) return toast(tr("Couldn't create: ", "তৈরি হয়নি: ") + error.message); await afterFamily(data); };
   $("setup-join").onsubmit = async (e) => { e.preventDefault(); await joinWith($("fam-code").value); };
   $("setup-single").onclick = async () => { const { data, error } = await sb.rpc("create_family", { fam_name: tr("My kitchen", "আমার রান্নাঘর"), fam_kind: "single" }); if (error) return toast(tr("Couldn't create: ", "তৈরি হয়নি: ") + error.message); await afterFamily(data); };
+}
+/* invite links (?join=CODE): check the code before sign-in so the visitor sees whose family it is */
+let invite = null;
+async function checkInvite(code) {
+  code = String(code || "").trim().toUpperCase();
+  if (!/^[A-Z0-9]{6}$/.test(code)) return { code, bad: true };
+  const { data, error } = await sb.rpc("family_preview", { join_code: code });
+  if (error) return { code };
+  return data ? { code, ...data } : { code, bad: true };
+}
+function renderInvite() {
+  const box = $("auth-invite"), valid = !!invite?.name;
+  $("su-kind-row").hidden = valid;
+  $("auth-guest").hidden = valid;
+  document.querySelector("#auth .over-in > p.muted").hidden = !!invite && (valid || invite.bad);
+  if (!invite || (!valid && !invite.bad)) { box.hidden = true; return; }
+  if (invite.bad) {
+    box.className = "invite bad";
+    box.innerHTML = `<div><b>${tr("This invite link doesn't work", "এই ইনভাইট লিংকটা কাজ করছে না")}</b><span class="sm">${tr(`No family has the code ${esc(invite.code)}. Ask for the link again, or log in and enter the code in the Family tab.`, `${esc(invite.code)} কোডের কোনো পরিবার নেই। আবার লিংকটা চেয়ে নিন, অথবা লগ ইন করে পরিবার ট্যাবে কোড দিন।`)}</span></div>`;
+  } else {
+    const who = invite.inviter || tr("Your partner", "আপনার সঙ্গী");
+    box.className = "invite";
+    box.innerHTML = `<span class="av">${initial(who)}</span><div><b>${esc(tr(`${who} invited you to “${invite.name}”`, `${who} আপনাকে “${invite.name}”-এ ডেকেছেন`))}</b><span class="sm">${tr("Create an account or log in. You'll join the family straight away.", "অ্যাকাউন্ট খুলুন বা লগ ইন করুন, সাথে সাথেই পরিবারে যোগ হয়ে যাবেন।")}</span></div>`;
+    const su = document.querySelector("[data-auth-tab=signup]"); if (su && su.getAttribute("aria-selected") !== "true") su.click();
+  }
+  box.hidden = false;
 }
 async function joinWith(code) {
   const { data, error } = await sb.rpc("join_family", { join_code: code });
@@ -771,7 +822,7 @@ function translateStatic() {
   A("#q", "placeholder", "রেসিপি বা উপকরণ খুঁজুন"); A("#q", "aria-label", "রেসিপি খুঁজুন"); A("#filter-btn", "aria-label", "ফিল্টার");
   T("#spin-btn", "ঘোরান");
   ["home", "recipes", "shop", "family"].forEach((k) => T(`.tab[data-tab=${k}]`, TITLES[k]));
-  A(".tab[data-tab=spin]", "aria-label", "ঘোরান"); A("#bell", "aria-label", "মেসেজ ও বাজার"); A("#back", "aria-label", "ফিরে যান");
+  A(".tab[data-tab=spin]", "aria-label", "ঘোরান"); A("#settings", "aria-label", "ভাষা ও থিম"); A("#bell", "aria-label", "মেসেজ ও বাজার"); A("#back", "aria-label", "ফিরে যান");
   T("#auth h1", "দেশি ডায়েট থালা");
   T("#auth .over-in > p.muted", "পুরো পরিবারের জন্য সহজ, স্বাস্থ্যকর ঘরের রান্না। পছন্দের রেসিপি শেয়ার করুন, আজকের রান্না ঠিক করুন, একে অপরকে বাজারের কথা জানান।");
   T("[data-auth-tab=login]", "লগ ইন"); T("[data-auth-tab=signup]", "নতুন অ্যাকাউন্ট"); T("[data-auth-tab=phone]", "ফোন");
@@ -803,19 +854,34 @@ async function start() {
   renderSpinControls(); buildWheel();
   bindAuth();
   const sp = new URLSearchParams(location.search);
-  if (sp.get("join")) store.set("pendingJoin", sp.get("join"));
+  if (sp.get("join")) {
+    store.set("pendingJoin", sp.get("join").trim().toUpperCase());
+    sp.delete("join"); history.replaceState(null, "", location.pathname + (sp.toString() ? "?" + sp : "") + location.hash);
+  }
   const want = sp.get("tab") === "bazar" ? "shop" : sp.get("tab"), saved = store.get("tab");
   showTab(TITLES[want] ? want : TITLES[saved] ? saved : "home");
   refreshAll();
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(() => {});
   if (!sb) return;
+  if (store.get("pendingJoin")) {
+    invite = await checkInvite(store.get("pendingJoin"));
+    if (invite.bad) { store.set("pendingJoin", ""); toast(tr(`Invite code ${invite.code} doesn't exist. Ask for the link again.`, `${invite.code} নামে কোনো ইনভাইট কোড নেই। আবার লিংক চেয়ে নিন।`)); }
+    renderInvite();
+  }
   const onSession = async (session) => {
     S.user = session?.user || null;
-    if (!S.user) { S.family = null; if (!store.get("guest")) showAuth(true); refreshAll(); return; }
+    if (!S.user) { S.family = null; if (!store.get("guest") || invite?.name) showAuth(true); refreshAll(); return; }
     showAuth(false);
-    const pending = store.get("pendingJoin");
-    if (pending && (await joinWith(pending))) return;
     const { data: mem } = await sb.from("family_members").select("family_id, families(*)").eq("user_id", S.user.id);
+    const pending = store.get("pendingJoin");
+    if (pending) {
+      const mine = (mem || []).find((m) => m.families?.code === pending);
+      const famName = invite?.name || pending;
+      if (mine) { store.set("pendingJoin", ""); store.set("familyId", mine.family_id); toast(tr(`You're already in ${famName}`, `আপনি আগে থেকেই ${famName}-এ আছেন`)); }
+      else if (!(mem || []).length || window.confirm(tr(`Join "${famName}"? The app will switch to this family.`, `"${famName}"-এ যোগ দেবেন? অ্যাপ এই পরিবারে চলে যাবে।`))) { if (await joinWith(pending)) { invite = null; renderInvite(); return; } }
+      else store.set("pendingJoin", "");
+      invite = null; renderInvite();
+    }
     const pick = (mem || []).find((m) => m.family_id === store.get("familyId")) || (mem || [])[0];
     if (pick?.families) await afterFamily(pick.families);
     else if (S.user.user_metadata?.kind === "single") { const { data } = await sb.rpc("create_family", { fam_name: tr("My kitchen", "আমার রান্নাঘর"), fam_kind: "single" }); if (data) await afterFamily(data); }
