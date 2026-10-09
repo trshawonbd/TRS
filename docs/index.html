@@ -158,6 +158,12 @@ h1, h2 { font-family: var(--display); font-weight: 400; letter-spacing: -.01em; 
 .pagebar.scrolled .pt { opacity: 1; }
 .r-hero .tile { aspect-ratio: 4 / 3; border-radius: 28px; }
 .r-hero .tile svg { width: 80%; }
+.tile img.photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.photo-by { font-size: .85rem; color: var(--muted); }
+.photo-acts { display: flex; gap: 8px; margin-left: auto; }
+.btn.sm { min-height: 40px; padding: 6px 14px; border-radius: 12px; font-size: .9rem; }
+.btn.sm svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 .r-title { display: grid; gap: 6px; }
 .r-title h1 { font-size: 2rem; line-height: 1.12; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); }
@@ -870,6 +876,9 @@ const qtyUnit = (q, u) => fmtQty(q) + (!u ? "" : u === "টি" ? u : " " + u);
 const ingLine = (r, i, f = 1) => { const [q, u, t] = r.ing[i]; return (q == null ? "" : qtyUnit(q * f, u) + " ") + one(q == null ? q : q * f, u, t); };
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const KCAL = tr("kcal", "ক্যালরি");
+/* the family's own photo of a dish if there is one, else the drawing */
+const photoOf = (id) => (typeof S !== "undefined" && S.photos ? S.photos.get(id) : null);
+const PIC = (id) => { const ph = photoOf(id); return ph && ph.url ? `<img class="photo" src="${esc(ph.url)}" alt="" loading="lazy" decoding="async">` : ART(id); };
 const ICON = {
   heart: '<svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>',
   play: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/></svg>',
@@ -888,6 +897,7 @@ const ICON = {
   clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>',
   moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
+  camera: '<svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
   globe: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>'
 };
 const TYPE_LABEL = BNL ? BN.TYPE : { "Main": "Mains", "Soup & Dal": "Soups & dal", "Salad": "Salads", "Snack": "Snacks", "Sweet": "Sweets", "Drink": "Drinks", "Side & Sauce": "Sides & sauces" };
@@ -953,7 +963,7 @@ let tab = "home", cat = "All", region = "Any cuisine", tool = "all", query = "";
 let cur = null, servings = 2, part = "ing";
 const sb = window.supabase ? window.supabase.createClient("https://fschjgkvvjcwfpbgwiei.supabase.co", "sb_publishable_mf_sr2nS345glCGeovJJkw_vxP9V3lC", { auth: { persistSession: true, detectSessionInUrl: true, flowType: "pkce" } }) : null;
 const VAPID_PUBLIC = "BIckWfK5nY56lXMgy0DypwZ-XXGc3gyhsEfSHlAqnox8rDmaV5SEzknH4LrXtx4GAawonxH2fgPTnsAcmSaG5WM";
-var S = { user: null, family: null, members: [], favs: [], plan: null, ing: new Map(), shop: [], inbox: [], activity: [], channel: null };
+var S = { user: null, family: null, members: [], favs: [], plan: null, ing: new Map(), shop: [], inbox: [], activity: [], photos: new Map(), channel: null };
 function inFamily() { return !!(S && S.user && S.family); }
 const myName = () => S.members.find((m) => m.user_id === S.user?.id)?.name || tr("Someone", "কেউ একজন");
 const nameOf = (uid) => (uid === S.user?.id ? tr("You", "আপনি") : S.members.find((m) => m.user_id === uid)?.name || tr("Family member", "পরিবারের সদস্য"));
@@ -1037,7 +1047,7 @@ $("settings").onclick = () => openSettings();
 /* ---------- home ---------- */
 const daySeed = () => { const d = new Date(); return d.getFullYear() * 400 + d.getMonth() * 31 + d.getDate(); };
 function seeded(list, n, seed) { const a = list.slice(); let s = seed; for (let i = a.length - 1; i > 0; i--) { s = (s * 9301 + 49297) % 233280; const j = Math.floor((s / 233280) * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a.slice(0, n); }
-const rcard = (r) => `<button class="rcard" data-r="${r.id}"><span class="tile ${TINT(r)}">${ART(r.id)}</span><span class="nm">${FAV_IDS().has(r.id) ? '<span class="heart">♥</span> ' : ""}${esc(r.name)}</span><span class="mt num">${N(r.kcal)} ${KCAL} · ${shortTime(r)}</span></button>`;
+const rcard = (r) => `<button class="rcard" data-r="${r.id}"><span class="tile ${TINT(r)}">${PIC(r.id)}</span><span class="nm">${FAV_IDS().has(r.id) ? '<span class="heart">♥</span> ' : ""}${esc(r.name)}</span><span class="mt num">${N(r.kcal)} ${KCAL} · ${shortTime(r)}</span></button>`;
 function renderHome() {
   const box = $("s-home");
   const rid = planRid(), r = rid && R[rid];
@@ -1045,7 +1055,7 @@ function renderHome() {
   if (r) {
     const have = haveOf(r).length, need = neededOf(r).length, total = r.ing.length;
     const picked = inFamily() ? tr(" · picked by ", " · বেছেছেন ") + esc(nameOf(S.plan.picked_by)) : "";
-    hero = `<article class="card hero"><div class="tile ${TINT(r)}">${ART(r.id)}</div><div class="hero-body">
+    hero = `<article class="card hero"><div class="tile ${TINT(r)}">${PIC(r.id)}</div><div class="hero-body">
       <p class="eyebrow">${tr("Tonight's dish", "আজকের রান্না")}${picked}</p>
       <h2>${esc(r.name)}</h2>
       <div class="progress" aria-hidden="true"><i style="width:${Math.round((have / total) * 100)}%"></i></div>
@@ -1205,7 +1215,9 @@ function renderPage() {
   }
   const extraTime = /\+/.test(r.time) ? "+ " + esc(r.time.split("+")[1].trim()) : tr("time", "সময়");
   $("page-body").innerHTML = `
-    <div class="r-hero"><div class="tile ${TINT(r)}">${ART(r.id)}</div></div>
+    <div class="r-hero"><div class="tile ${TINT(r)}">${PIC(r.id)}</div>
+      <div class="photo-bar">${photoOf(r.id) ? `<span class="photo-by">${tr("Photo by", "ছবি:")} ${esc(nameOf(photoOf(r.id).user_id))}</span>` : "<span></span>"}
+        <span class="photo-acts">${photoOf(r.id)?.user_id === S.user?.id ? `<button class="btn ghost sm" id="photo-del">${tr("Remove", "সরান")}</button>` : ""}<button class="btn soft sm" id="photo-add">${ICON.camera} ${photoOf(r.id) ? tr("New photo", "নতুন ছবি") : tr("Add your photo", "আপনার ছবি দিন")}</button></span></div></div>
     <div class="r-title"><p class="eyebrow">${esc(tOrigin(r.origin))} · ${esc(tType(r.type))}</p><h1>${esc(r.name)}</h1>
       ${favBy.length ? `<p class="small muted">♥ ${esc(favBy.join(", "))}</p>` : ""}</div>
     <div class="stats num"><div><b>${N(r.kcal)}</b><span>${KCAL}</span></div><div><b>${N(r.p)} ${tr("g", "গ্রাম")}</b><span>${tr("protein", "প্রোটিন")}</span></div><div><b>${shortTime(r)}</b><span>${extraTime}</span></div></div>
@@ -1219,6 +1231,8 @@ function renderPage() {
   if (m) m.onclick = () => { if (servings > 1) { servings--; renderPage(); } };
   if (p) p.onclick = () => { if (servings < 12) { servings++; renderPage(); } };
   const p2 = $("play2"); if (p2) p2.onclick = () => PL.open(r.id);
+  $("photo-add").onclick = () => addPhoto(r);
+  const pd = $("photo-del"); if (pd) pd.onclick = () => removePhoto(r);
   bindCommon(pb);
   // action bar
   const isPlan = planRid() === r.id;
@@ -1379,7 +1393,7 @@ function showResult(r) {
   spinning = false;
   const btn = $("spin-btn"); btn.disabled = false; btn.textContent = tr("Spin again", "আবার ঘোরান");
   const box = $("result");
-  box.innerHTML = `<div class="result"><span class="tile ${TINT(r)}">${ART(r.id)}</span><div><p class="eyebrow">${tr("Tonight", "আজ রাতে")}</p><h3>${esc(r.name)}</h3><p class="small muted num">${N(r.kcal)} ${KCAL} · ${shortTime(r)}</p></div></div>
+  box.innerHTML = `<div class="result"><span class="tile ${TINT(r)}">${PIC(r.id)}</span><div><p class="eyebrow">${tr("Tonight", "আজ রাতে")}</p><h3>${esc(r.name)}</h3><p class="small muted num">${N(r.kcal)} ${KCAL} · ${shortTime(r)}</p></div></div>
     <div class="row2"><button class="btn primary" id="res-cook">${tr("Cook this today", "আজ এটা রাঁধব")}</button><button class="btn soft" data-r="${r.id}">${tr("View recipe", "রেসিপি দেখুন")}</button></div>`;
   box.hidden = false;
   $("res-cook").onclick = () => setPlan(r.id);
@@ -1524,11 +1538,63 @@ async function loadShop() {
 }
 async function loadInbox() { const { data } = await sb.from("notifications").select("*").eq("to_user", S.user.id).order("created_at", { ascending: false }).limit(40); S.inbox = data || []; }
 async function loadActivity() { const { data } = await sb.from("activity").select("*").eq("family_id", S.family.id).order("created_at", { ascending: false }).limit(30); S.activity = data || []; }
-async function loadAll() { await Promise.all([loadMembers(), loadFavs(), loadPlan(), loadIng(), loadShop(), loadInbox(), loadActivity()]); }
+async function loadPhotos() {
+  const { data } = await sb.from("dish_photos").select("recipe_id, path, user_id, created_at").eq("family_id", S.family.id).order("created_at", { ascending: false }).limit(300);
+  const latest = new Map();
+  (data || []).forEach((p) => { if (!latest.has(p.recipe_id)) latest.set(p.recipe_id, p); });
+  const paths = [...latest.values()].map((p) => p.path);
+  if (paths.length) {
+    const { data: signed } = await sb.storage.from("dish-photos").createSignedUrls(paths, 60 * 60 * 24);
+    const byPath = new Map((signed || []).map((x) => [x.path, x.signedUrl]));
+    latest.forEach((p) => (p.url = byPath.get(p.path) || null));
+  }
+  S.photos = latest;
+}
+async function loadAll() { await Promise.all([loadMembers(), loadFavs(), loadPlan(), loadIng(), loadShop(), loadInbox(), loadActivity(), loadPhotos()]); }
+
+/* family photos of dishes: shrink on the phone, upload to the private bucket, then record it */
+async function shrinkImage(file, max = 1280) {
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas"); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  return new Promise((ok, bad) => c.toBlob((b) => (b ? ok(b) : bad(new Error("encode"))), "image/jpeg", 0.82));
+}
+function addPhoto(r) {
+  if (!inFamily()) return toast(tr("Sign in to add photos for your family.", "ছবি দিতে লগ ইন করুন।"));
+  const input = document.createElement("input"); input.type = "file"; input.accept = "image/*";
+  input.onchange = async () => {
+    const f = input.files && input.files[0]; if (!f) return;
+    let blob;
+    try { blob = await shrinkImage(f); } catch (e) { return toast(tr("This photo type can't be read. Try a JPEG or PNG.", "এই ধরনের ছবি পড়া যাচ্ছে না। JPEG বা PNG দিন।")); }
+    toast(tr("Uploading photo…", "ছবি আপলোড হচ্ছে…"));
+    const failed = () => toast(tr("Upload failed, check the internet and try again", "আপলোড হয়নি, ইন্টারনেট দেখে আবার চেষ্টা করুন"));
+    const path = `${S.family.id}/${r.id}/${crypto.randomUUID()}.jpg`;
+    try {
+      const up = await sb.storage.from("dish-photos").upload(path, blob, { contentType: "image/jpeg", upsert: false });
+      if (up.error) return failed();
+      const ins = await sb.from("dish_photos").insert({ family_id: S.family.id, recipe_id: r.id, path });
+      if (ins.error) { await sb.storage.from("dish-photos").remove([path]); return failed(); }
+      await loadPhotos(); refreshAll();
+    } catch (e) { return failed(); }
+    toast(tr("Photo added", "ছবি যোগ হয়েছে"));
+    logActivity(tr(`added a photo of ${r.name}`, `${r.name}-এর ছবি দিয়েছেন`));
+  };
+  input.click();
+}
+async function removePhoto(r) {
+  const ph = photoOf(r.id); if (!ph || ph.user_id !== S.user?.id) return;
+  if (!window.confirm(tr("Remove your photo?", "আপনার ছবিটা সরাবেন?"))) return;
+  try {
+    await sb.from("dish_photos").delete().eq("path", ph.path);
+    await sb.storage.from("dish-photos").remove([ph.path]);
+    await loadPhotos(); refreshAll();
+  } catch (e) { toast(tr("Couldn't remove, try again", "সরানো যায়নি, আবার চেষ্টা করুন")); }
+}
 function subscribe() {
   if (S.channel) sb.removeChannel(S.channel);
   const f = `family_id=eq.${S.family.id}`;
-  const reload = { favorites: loadFavs, cook_plans: loadPlan, ingredient_status: loadIng, shopping_items: loadShop, activity: loadActivity, family_members: loadMembers };
+  const reload = { favorites: loadFavs, cook_plans: loadPlan, ingredient_status: loadIng, shopping_items: loadShop, activity: loadActivity, family_members: loadMembers, dish_photos: loadPhotos };
   let ch = sb.channel("fam-" + S.family.id);
   Object.keys(reload).forEach((t) => { ch = ch.on("postgres_changes", { event: "*", schema: "public", table: t, filter: f }, async () => { await reload[t](); refreshAll(); }); });
   ch = ch.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `to_user=eq.${S.user.id}` }, async (p) => { await loadInbox(); refreshAll(); if (p.eventType === "INSERT") toast(p.new.title); });

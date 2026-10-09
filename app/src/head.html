@@ -141,6 +141,12 @@ h1, h2 { font-family: var(--display); font-weight: 400; letter-spacing: -.01em; 
 .pagebar.scrolled .pt { opacity: 1; }
 .r-hero .tile { aspect-ratio: 4 / 3; border-radius: 28px; }
 .r-hero .tile svg { width: 80%; }
+.tile img.photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.photo-by { font-size: .85rem; color: var(--muted); }
+.photo-acts { display: flex; gap: 8px; margin-left: auto; }
+.btn.sm { min-height: 40px; padding: 6px 14px; border-radius: 12px; font-size: .9rem; }
+.btn.sm svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 .r-title { display: grid; gap: 6px; }
 .r-title h1 { font-size: 2rem; line-height: 1.12; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); }
