@@ -90,6 +90,7 @@ const ICON = {
   moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
   camera: '<svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
   temp: '<svg viewBox="0 0 24 24"><path d="M10 14V5a2 2 0 0 1 4 0v9a4 4 0 1 1-4 0z"/></svg>',
+  trophy: '<svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M10 17h4"/></svg>',
   globe: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>'
 };
 const TYPE_LABEL = BNL ? BN.TYPE : { "Main": "Mains", "Soup & Dal": "Soups & dal", "Salad": "Salads", "Snack": "Snacks", "Sweet": "Sweets", "Drink": "Drinks", "Side & Sauce": "Sides & sauces" };
@@ -155,7 +156,7 @@ let tab = "home", cat = "All", region = "Any cuisine", tool = "all", query = "";
 let cur = null, servings = 2, part = "ing";
 const sb = window.supabase ? window.supabase.createClient("https://fschjgkvvjcwfpbgwiei.supabase.co", "sb_publishable_mf_sr2nS345glCGeovJJkw_vxP9V3lC", { auth: { persistSession: true, detectSessionInUrl: true, flowType: "pkce" } }) : null;
 const VAPID_PUBLIC = "BIckWfK5nY56lXMgy0DypwZ-XXGc3gyhsEfSHlAqnox8rDmaV5SEzknH4LrXtx4GAawonxH2fgPTnsAcmSaG5WM";
-var S = { user: null, family: null, members: [], favs: [], plan: null, ing: new Map(), shop: [], inbox: [], activity: [], photos: new Map(), channel: null };
+var S = { user: null, family: null, members: [], favs: [], plan: null, ing: new Map(), shop: [], inbox: [], activity: [], photos: new Map(), photoList: [], cooked: [], pop: new Map(), channel: null };
 function inFamily() { return !!(S && S.user && S.family); }
 const myName = () => S.members.find((m) => m.user_id === S.user?.id)?.name || tr("Someone", "কেউ একজন");
 const nameOf = (uid) => (uid === S.user?.id ? tr("You", "আপনি") : S.members.find((m) => m.user_id === uid)?.name || tr("Family member", "পরিবারের সদস্য"));
@@ -248,11 +249,13 @@ function renderHome() {
     const have = haveOf(r).length, need = neededOf(r).length, total = r.ing.length;
     const picked = inFamily() ? tr(" · picked by ", " · বেছেছেন ") + esc(nameOf(S.plan.picked_by)) : "";
     hero = `<article class="card hero"><div class="tile ${TINT(r)}">${PIC(r.id)}</div><div class="hero-body">
-      <p class="eyebrow">${tr("Tonight's dish", "আজকের রান্না")}${picked}</p>
+      <p class="eyebrow hero-eb"><span>${tr("Tonight's dish", "আজকের রান্না")}${picked}</span><button class="link" data-tab-go="spin">${tr("Change", "বদলান")}</button></p>
       <h2>${esc(r.name)}</h2>
       <div class="progress" aria-hidden="true"><i style="width:${Math.round((have / total) * 100)}%"></i></div>
       <p class="small muted num">${tr(`${have} of ${total} ingredients ready`, `${N(total)}টির মধ্যে ${N(have)}টি উপকরণ আছে`)}${need ? ` · <b style="color:var(--chili)">${tr(`${need} missing`, `${N(need)}টি নেই`)}</b>` : ""}</p>
-      <div class="row2"><button class="btn primary" data-open="${r.id}">${tr("Check ingredients", "উপকরণ দেখুন")}</button><button class="btn soft" data-tab-go="spin">${tr("Change", "বদলান")}</button></div>
+      <div class="row2">${cookedToday(r.id)
+        ? `<button class="btn soft" disabled>✓ ${tr("Cooked", "রান্না হয়েছে")}</button>${inFamily() && !photoOf(r.id) ? `<button class="btn primary" id="hero-photo">${ICON.camera} ${tr("Add photo", "ছবি দিন")}</button>` : `<button class="btn primary" data-sub="journey">${tr("Our journey", "রান্নার খাতা")}</button>`}`
+        : `<button class="btn primary" data-open="${r.id}">${tr("Check ingredients", "উপকরণ দেখুন")}</button><button class="btn soft" id="hero-cooked">✓ ${tr("We cooked it", "রান্না হয়েছে")}</button>`}</div>
     </div></article>`;
   } else {
     hero = `<article class="card"><p class="eyebrow">${tr("Tonight's dish", "আজকের রান্না")}</p><h2 style="font-size:1.6rem">${tr("What's cooking today?", "আজ কী রান্না হবে?")}</h2>
@@ -268,6 +271,7 @@ function renderHome() {
   box.innerHTML = `
     ${unread.length ? `<button class="msg-strip" data-tab-go="shop"><span class="dot"></span><span><b>${esc(unread[0].title)}</b><br><span class="small muted">${esc(nameOf(unread[0].from_user))} · ${ago(unread[0].created_at)}${unread.length > 1 ? tr(` · +${unread.length - 1} more`, ` · আরও ${N(unread.length - 1)}টি`) : ""}</span></span></button>` : ""}
     ${hero}
+    ${journeyCard()}
     <div class="mini">
       <button class="card" data-tab-go="shop"><span class="eyebrow">${tr("Shopping", "বাজার")}</span><b class="num">${N(toBuy)}</b><span class="small muted">${tr(toBuy === 1 ? "item to buy" : "items to buy", "টি জিনিস কিনতে হবে")}</span></button>
       <button class="card" data-sub="plan"><span class="eyebrow">${tr("Diet plan", "ডায়েট প্ল্যান")}</span><b class="num">${N(planK)}</b><span class="small muted">${tr("kcal today", "ক্যালরি আজ")}</span></button>
@@ -277,6 +281,8 @@ function renderHome() {
     ${hscroll(quick.map(rcard).join(""))}`;
   bindCommon(box);
   box.querySelectorAll(".hs").forEach(bindHscroll);
+  const hc = $("hero-cooked"); if (hc) hc.onclick = () => markCooked(rid);
+  const hp = $("hero-photo"); if (hp) hp.onclick = () => addPhoto(R[rid]);
 }
 /* sideways rows: arrows for mouse users, drag with the mouse, swipe on touch */
 const hscroll = (inner) => `<div class="hs"><button type="button" class="hs-btn prev" aria-label="${tr("Scroll left", "বাঁয়ে")}">‹</button><div class="carousel">${inner}</div><button type="button" class="hs-btn next" aria-label="${tr("Scroll right", "ডানে")}">›</button></div>`;
@@ -412,7 +418,8 @@ function renderPage() {
       <div class="photo-bar">${photoOf(r.id) ? `<span class="photo-by">${tr("Photo by", "ছবি:")} ${esc(nameOf(photoOf(r.id).user_id))}</span>` : "<span></span>"}
         <span class="photo-acts">${photoOf(r.id) && S.user && photoOf(r.id).user_id === S.user.id ? `<button class="btn ghost sm" id="photo-del">${tr("Remove", "সরান")}</button>` : ""}<button class="btn soft sm" id="photo-add">${ICON.camera} ${photoOf(r.id) ? tr("New photo", "নতুন ছবি") : tr("Add your photo", "আপনার ছবি দিন")}</button></span></div></div>
     <div class="r-title"><p class="eyebrow">${esc(tOrigin(r.origin))} · ${esc(tType(r.type))}</p><h1>${esc(r.name)}</h1>
-      ${favBy.length ? `<p class="small muted">♥ ${esc(favBy.join(", "))}</p>` : ""}</div>
+      ${favBy.length ? `<p class="small muted">♥ ${esc(favBy.join(", "))}</p>` : ""}
+      ${timesCooked(r.id) || (S.pop.get(r.id) || 0) > 1 ? `<p class="small muted num">${[timesCooked(r.id) ? tr(`🍳 You've cooked this ${timesCooked(r.id)} time${timesCooked(r.id) > 1 ? "s" : ""}`, `🍳 আপনারা ${N(timesCooked(r.id))} বার রেঁধেছেন`) : "", (S.pop.get(r.id) || 0) > 1 ? tr(`${S.pop.get(r.id)} families cooked it`, `${N(S.pop.get(r.id))}টি পরিবার রেঁধেছে`) : ""].filter(Boolean).join(" · ")}</p>` : ""}</div>
     <div class="stats num"><div><b>${N(r.kcal)}</b><span>${KCAL}</span></div><div><b>${N(r.p)} ${tr("g", "গ্রাম")}</b><span>${tr("protein", "প্রোটিন")}</span></div><div><b>${shortTime(r)}</b><span>${extraTime}</span></div></div>
     ${r.reg > r.kcal ? `<span class="lighter num">${tr(`${r.reg - r.kcal} kcal lighter than usual`, `সাধারণের চেয়ে ${N(r.reg - r.kcal)} ক্যালরি কম`)}</span>` : ""}
     <div class="seg" role="tablist">${[["ing", tr("Ingredients", "উপকরণ")], ["steps", tr("Method", "রান্নার ধাপ")], ["tips", tr("Tips", "টিপস")]].map(([k, l]) => `<button role="tab" data-p="${k}" aria-selected="${k === part}">${l}</button>`).join("")}</div>
@@ -432,11 +439,13 @@ function renderPage() {
   let main;
   if (need.length) main = `<button class="btn primary" id="ab-main">${ICON.bell} ${tr(`Ask for ${need.length} missing`, `${N(need.length)}টি জিনিস চেয়ে পাঠান`)}</button>`;
   else if (!isPlan) main = `<button class="btn primary" id="ab-main">${tr("Cook this today", "আজ এটা রাঁধব")}</button>`;
+  else if (!cookedToday(r.id)) main = `<button class="btn primary" id="ab-main">✓ ${tr("We cooked it", "রান্না হয়েছে")}</button>`;
+  else if (inFamily() && !photoOf(r.id)) main = `<button class="btn primary" id="ab-main">${ICON.camera} ${tr("Add a photo of it", "রান্নার ছবি দিন")}</button>`;
   else main = `<button class="btn primary" id="ab-main">${ICON.share} ${tr("Share ingredients", "উপকরণ শেয়ার করুন")}</button>`;
   $("actionbar-in").innerHTML = `<button class="btn round" id="ab-play" aria-label="${tr("Play video", "ভিডিও চালান")}">${ICON.play}</button>${main}`;
   $("actionbar").hidden = false;
   $("ab-play").onclick = () => PL.open(r.id);
-  $("ab-main").onclick = () => (need.length ? openNotify(r) : !isPlan ? setPlan(r.id) : shareCard(r, r.ing.map((_, i) => ingLine(r, i)), tr("Ingredients", "উপকরণ")));
+  $("ab-main").onclick = () => (need.length ? openNotify(r) : !isPlan ? setPlan(r.id) : !cookedToday(r.id) ? markCooked(r.id) : inFamily() && !photoOf(r.id) ? addPhoto(r) : shareCard(r, r.ing.map((_, i) => ingLine(r, i)), tr("Ingredients", "উপকরণ")));
 }
 
 /* ---------- notify sheet ---------- */
@@ -492,7 +501,7 @@ async function shareCard(r, items, heading) {
 /* ---------- sub pages: diet plan, kitchen, activity, tips ---------- */
 let planDay = (DAYS.find((d) => d.js === new Date().getDay()) || DAYS[0]).k;
 function openSub(kind) {
-  const titles = { plan: tr("Diet plan", "ডায়েট প্ল্যান"), kitchen: tr("My kitchen", "আমার রান্নাঘর"), activity: tr("Activity", "কে কী করেছে"), tips: tr("Healthy swaps", "স্বাস্থ্যকর বদল") };
+  const titles = { plan: tr("Diet plan", "ডায়েট প্ল্যান"), kitchen: tr("My kitchen", "আমার রান্নাঘর"), activity: tr("Activity", "কে কী করেছে"), tips: tr("Healthy swaps", "স্বাস্থ্যকর বদল"), journey: tr("Our kitchen journey", "আমাদের রান্নার খাতা") };
   openPageShell(kind, titles[kind]);
   $("page-act").innerHTML = "";
   $("actionbar").hidden = true;
@@ -525,6 +534,8 @@ function renderSub() {
     pb.querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => { store.set(b.dataset.k, b.dataset.v); renderSub(); }));
   } else if (k === "activity") {
     pb.innerHTML = `<div class="r-title"><h1>${tr("Activity", "কে কী করেছে")}</h1></div><div class="card" style="gap:0">${S.activity.map((a) => `<div class="act"><span class="av">${initial(nameOf(a.user_id))}</span><span><b>${esc(nameOf(a.user_id))}</b> ${esc(a.text)}<small>${ago(a.created_at)}</small></span></div>`).join("") || `<p class="muted">${tr("Nothing yet.", "এখনো কিছু হয়নি।")}</p>`}</div>`;
+  } else if (k === "journey") {
+    renderJourney(pb);
   } else if (k === "tips") {
     pb.innerHTML = `<div class="r-title"><h1>${tr("Healthy swaps", "স্বাস্থ্যকর বদল")}</h1><p class="muted">${tr("Same taste, far fewer calories.", "একই স্বাদ, অনেক কম ক্যালরি।")}</p></div>
       <div class="card" style="gap:0">${SWAPS.map(([a, b, c]) => `<div class="act" style="grid-template-columns:1fr"><span><span class="small muted" style="text-decoration:line-through">${esc(a)}</span><br><b>${esc(b)}</b><small style="color:var(--leaf)">${esc(c)}</small></span></div>`).join("")}</div>
@@ -668,7 +679,8 @@ async function renderFamily() {
   const rowlink = (sub, ic, t, s) => `<button class="rowlink" data-sub="${sub}"><span class="ic">${ic}</span><span>${t}${s ? `<small>${s}</small>` : ""}</span><span class="chev">${ICON.chev}</span></button>`;
   const langRow = `<div class="rowlink pick" style="cursor:default"><span class="ic">${ICON.globe}</span><span>${tr("Language", "ভাষা")}</span>${langPicker()}</div>`;
   const themeRow = `<div class="rowlink pick" style="cursor:default"><span class="ic">${ICON.moon}</span><span>${tr("Theme", "থিম")}</span>${themePicker()}</div>`;
-  const common = [langRow, themeRow,
+  const js = journeyStats(), nb = earnedBadges(js).length;
+  const common = [rowlink("journey", ICON.trophy, tr("Our kitchen journey", "আমাদের রান্নার খাতা"), tr(`${js.tried.size} recipes tried · ${nb} badges`, `${N(js.tried.size)}টি রেসিপি · ${N(nb)}টি ব্যাজ`)), langRow, themeRow,
     rowlink("plan", ICON.cal, tr("Weekly diet plan", "সাপ্তাহিক ডায়েট প্ল্যান"), tr("3 meals a day, no breakfast", "নাস্তা ছাড়া দিনে ৩ বেলা")),
     rowlink("kitchen", ICON.oven, tr("My kitchen", "আমার রান্নাঘর"), tr("Oven and air fryer settings", "ওভেন আর এয়ার ফ্রায়ার")),
     rowlink("tips", ICON.bulb, tr("Healthy swaps", "স্বাস্থ্যকর বদল"), tr("Lighter versions of everyday habits", "রোজকার অভ্যাসের হালকা বিকল্প"))];
@@ -735,15 +747,16 @@ async function loadPhotos() {
   const { data } = await sb.from("dish_photos").select("recipe_id, path, user_id, created_at").eq("family_id", S.family.id).order("created_at", { ascending: false }).limit(300);
   const latest = new Map();
   (data || []).forEach((p) => { if (!latest.has(p.recipe_id)) latest.set(p.recipe_id, p); });
-  const paths = [...latest.values()].map((p) => p.path);
+  const list = (data || []).slice(0, 60);
+  const paths = [...new Set([...latest.values(), ...list].map((p) => p.path))];
   if (paths.length) {
     const { data: signed } = await sb.storage.from("dish-photos").createSignedUrls(paths, 60 * 60 * 24);
     const byPath = new Map((signed || []).map((x) => [x.path, x.signedUrl]));
-    latest.forEach((p) => (p.url = byPath.get(p.path) || null));
+    [...latest.values(), ...list].forEach((p) => (p.url = byPath.get(p.path) || null));
   }
-  S.photos = latest;
+  S.photos = latest; S.photoList = list;
 }
-async function loadAll() { await Promise.all([loadMembers(), loadFavs(), loadPlan(), loadIng(), loadShop(), loadInbox(), loadActivity(), loadPhotos()]); }
+async function loadAll() { await Promise.all([loadMembers(), loadFavs(), loadPlan(), loadIng(), loadShop(), loadInbox(), loadActivity(), loadPhotos(), loadCooked(), loadPopularity()]); }
 
 /* family photos of dishes: shrink on the phone, upload to the private bucket, then record it */
 async function shrinkImage(file, max = 1280) {
@@ -787,7 +800,7 @@ async function removePhoto(r) {
 function subscribe() {
   if (S.channel) sb.removeChannel(S.channel);
   const f = `family_id=eq.${S.family.id}`;
-  const reload = { favorites: loadFavs, cook_plans: loadPlan, ingredient_status: loadIng, shopping_items: loadShop, activity: loadActivity, family_members: loadMembers, dish_photos: loadPhotos };
+  const reload = { favorites: loadFavs, cook_plans: loadPlan, ingredient_status: loadIng, shopping_items: loadShop, activity: loadActivity, family_members: loadMembers, dish_photos: loadPhotos, cooked_log: loadCooked };
   let ch = sb.channel("fam-" + S.family.id);
   Object.keys(reload).forEach((t) => { ch = ch.on("postgres_changes", { event: "*", schema: "public", table: t, filter: f }, async () => { await reload[t](); refreshAll(); }); });
   ch = ch.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `to_user=eq.${S.user.id}` }, async (p) => { await loadInbox(); refreshAll(); if (p.eventType === "INSERT") toast(p.new.title); });
@@ -934,6 +947,7 @@ function refreshAll() {
   const dot = document.querySelector(".tab[data-tab=shop] .dotn"); if (dot) dot.hidden = !n;
   $("greet").textContent = tab === "home" ? greeting() : "";
   if (pageKind === "recipe") renderPage();
+  if (pageKind === "journey") renderSub();
 }
 
 /* ---------- start ---------- */
