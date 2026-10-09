@@ -3,7 +3,7 @@
 A family meal-planning web app (installable PWA): 114 healthy, easy, halal recipes, a spin-the-wheel picker,
 shared favourites, "today's dish", have/need ingredient checks, a shared shopping list and push notifications.
 
-- Source: `app/src/*` — build with `./app/build.sh`, which writes `docs/index.html`.
+- Source: `app/src/*` (English): `data.js` recipes, `art.js` illustrations, `player.js` step-by-step video, `app.js` app logic. Build with `./app/build.sh`, which writes `docs/index.html`.
 - Hosting: GitHub Pages from the `docs/` folder.
 - Backend: Supabase project `deshi-diet-thala` (auth, database with row-level security, realtime,
   and the `notify` edge function that stores messages and sends web push).

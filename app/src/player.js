@@ -4,28 +4,27 @@ const PL = (() => {
   const el = document.getElementById("player");
   let scenes = [], idx = 0, playing = false, elapsed = 0, last = 0, raf = 0, wake = null, rec = false, recipe = null;
   let timer = null;
-  const toLatin = (s) => s.replace(/[০-৯]/g, (d) => "০১২৩৪৫৬৭৮৯".indexOf(d));
   const minutesIn = (s) => {
-    const m = toLatin(s).match(/(\d+)(?:\s*[–-]\s*(\d+))?\s*মিনিট/);
+    const m = s.match(/(\d+)(?:\s*[–-]\s*(\d+))?\s*(?:min|minute)/i);
     return m ? +(m[2] || m[1]) : 0;
   };
-  const mmss = (sec) => bn(String(Math.floor(sec / 60)).padStart(2, "0")) + ":" + bn(String(sec % 60).padStart(2, "0"));
+  const mmss = (sec) => String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
 
   function build(r) {
-    const cls = (BADGE[r.origin] || ["", ""])[1];
+    const cls = TINT(r);
     const s = [];
     s.push({ d: 4200, kind: "intro", html: `<div class="pl-art ${cls}">${ART(r.id)}<i class="st s1"></i><i class="st s2"></i><i class="st s3"></i></div>
-      <p class="pl-kicker">${r.origin} · সহজ · হালকা</p><h2 class="pl-title">${r.name}</h2>
-      <p class="pl-meta num">${bn(r.kcal)} ক্যালরি · প্রোটিন ${bn(r.p)} গ্রাম · ${r.time}</p>` });
+      <p class="pl-kicker">${esc(r.origin)} · easy · light</p><h2 class="pl-title">${esc(r.name)}</h2>
+      <p class="pl-meta num">${r.kcal} kcal · ${r.p} g protein · ${esc(r.time)}</p>` });
     const ing = r.ing.slice(0, 8);
-    s.push({ d: Math.min(9000, 2600 + ing.length * 650), kind: "ing", html: `<p class="pl-kicker">${bn(r.base)} জনের জন্য</p><h2 class="pl-title sm">যা লাগবে</h2>
-      <ul class="pl-ing">${ing.map(([q, u, t], i) => `<li style="animation-delay:${0.35 + i * 0.45}s"><b class="num">${q == null ? "" : fmtQty(q) + " " + u}</b> ${t}</li>`).join("")}</ul>` });
+    s.push({ d: Math.min(9000, 2600 + ing.length * 650), kind: "ing", html: `<p class="pl-kicker">Serves ${r.base}</p><h2 class="pl-title sm">What you need</h2>
+      <ul class="pl-ing">${ing.map(([q, u, t], i) => `<li style="animation-delay:${0.35 + i * 0.45}s"><b class="num">${q == null ? "" : fmtQty(q) + (u ? " " + esc(u) : "")}</b> ${esc(one(q, u, t))}</li>`).join("")}</ul>` });
     r.steps.forEach((t, i) => {
       s.push({ d: Math.min(10000, 3600 + t.length * 55), kind: "step", min: minutesIn(t), html: `<div class="pl-art small ${cls}">${ART(r.id)}<i class="st s1"></i><i class="st s2"></i></div>
-        <p class="pl-kicker num">ধাপ ${bn(i + 1)} / ${bn(r.steps.length)}</p><p class="pl-step">${t}</p>` });
+        <p class="pl-kicker num">Step ${i + 1} of ${r.steps.length}</p><p class="pl-step">${esc(t)}</p>` });
     });
-    s.push({ d: 4500, kind: "outro", html: `<div class="pl-art ${cls}">${ART(r.id)}</div><h2 class="pl-title">খাবার তৈরি!</h2>
-      ${r.reg > r.kcal ? `<p class="pl-meta num">সাধারণ রান্নার চেয়ে প্রতি জনে প্রায় ${bn(r.reg - r.kcal)} ক্যালরি কম</p>` : ""}<p class="pl-brand">দেশি ডায়েট থালা</p>` });
+    s.push({ d: 4500, kind: "outro", html: `<div class="pl-art ${cls}">${ART(r.id)}</div><h2 class="pl-title">Ready to eat!</h2>
+      ${r.reg > r.kcal ? `<p class="pl-meta num">About ${r.reg - r.kcal} kcal lighter per serving than the usual version</p>` : ""}<p class="pl-brand">Deshi Diet Thala</p>` });
     return s;
   }
   function bars() {
@@ -42,7 +41,7 @@ const PL = (() => {
     void stage.offsetWidth;
     stage.classList.add("in");
     const tb = el.querySelector(".pl-timer");
-    if (sc.min && !rec) { tb.hidden = false; tb.textContent = `${bn(sc.min)} মিনিটের টাইমার চালু করুন`; tb.onclick = () => startTimer(sc.min); }
+    if (sc.min && !rec) { tb.hidden = false; tb.textContent = `Start a ${sc.min}-minute timer`; tb.onclick = () => startTimer(sc.min); }
     else tb.hidden = true;
     paint();
   }
@@ -51,7 +50,7 @@ const PL = (() => {
       b.style.width = i < idx ? "100%" : i > idx ? "0%" : Math.min(100, (elapsed / scenes[idx].d) * 100) + "%";
     });
     el.querySelector(".pl-play").innerHTML = playing ? ICON.pause : ICON.play;
-    el.querySelector(".pl-play").setAttribute("aria-label", playing ? "থামান" : "চালান");
+    el.querySelector(".pl-play").setAttribute("aria-label", playing ? "Pause" : "Play");
   }
   function loop(t) {
     if (!playing) return;
@@ -71,19 +70,19 @@ const PL = (() => {
     let left = min * 60;
     const tb = el.querySelector(".pl-timer");
     tb.classList.add("on");
-    tb.textContent = `⏱ ${mmss(left)} · থামাতে চাপুন`;
-    tb.onclick = () => { stopTimer(); tb.textContent = `${bn(min)} মিনিটের টাইমার চালু করুন`; tb.onclick = () => startTimer(min); };
+    tb.textContent = `⏱ ${mmss(left)} · tap to stop`;
+    tb.onclick = () => { stopTimer(); tb.textContent = `Start a ${min}-minute timer`; tb.onclick = () => startTimer(min); };
     timer = setInterval(() => {
       left--;
       if (left <= 0) {
         stopTimer();
         tb.classList.add("on");
-        tb.textContent = "সময় শেষ! পরের ধাপে যান";
+        tb.textContent = "Time's up — next step";
         beep();
         tb.onclick = () => { show(idx + 1); play(); };
         return;
       }
-      tb.textContent = `⏱ ${mmss(left)} · থামাতে চাপুন`;
+      tb.textContent = `⏱ ${mmss(left)} · tap to stop`;
     }, 1000);
   }
   function stopTimer() { if (timer) clearInterval(timer); timer = null; const tb = el.querySelector(".pl-timer"); if (tb) tb.classList.remove("on"); }
@@ -122,7 +121,7 @@ const PL = (() => {
     pause();
     stopTimer();
     el.hidden = true;
-    if (!document.getElementById("sheet").classList.contains("open")) document.body.classList.remove("lock");
+    if (!document.getElementById("page").classList.contains("open")) document.body.classList.remove("lock");
     el.setAttribute("aria-hidden", "true");
     try { wake && wake.release(); } catch (e) {}
     wake = null;

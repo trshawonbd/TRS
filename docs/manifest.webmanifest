@@ -1,17 +1,30 @@
 {
-  "name": "দেশি ডায়েট থালা",
-  "short_name": "দেশি থালা",
-  "description": "পরিবারের জন্য সহজ ও স্বাস্থ্যকর রেসিপি",
-  "lang": "bn",
+  "name": "Deshi Diet Thala",
+  "short_name": "Deshi Thala",
+  "description": "Healthy, easy home cooking for the whole family",
+  "lang": "en",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F2F6F1",
-  "theme_color": "#1E6A44",
+  "background_color": "#F4F5F0",
+  "theme_color": "#1F5C3D",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
