@@ -267,11 +267,37 @@ function renderHome() {
       <button class="card" data-tab-go="shop"><span class="eyebrow">${tr("Shopping", "বাজার")}</span><b class="num">${N(toBuy)}</b><span class="small muted">${tr(toBuy === 1 ? "item to buy" : "items to buy", "টি জিনিস কিনতে হবে")}</span></button>
       <button class="card" data-sub="plan"><span class="eyebrow">${tr("Diet plan", "ডায়েট প্ল্যান")}</span><b class="num">${N(planK)}</b><span class="small muted">${tr("kcal today", "ক্যালরি আজ")}</span></button>
     </div>
-    ${favs.length ? `<div class="section-h"><h2>${inFamily() ? tr("Family favourites", "পরিবারের পছন্দ") : tr("Your favourites", "আপনার পছন্দ")}</h2><button class="link" data-cat-go="Favourites">${tr("See all", "সব দেখুন")}</button></div><div class="carousel">${favs.slice(0, 10).map(rcard).join("")}</div>` : ""}
+    ${favs.length ? `<div class="section-h"><h2>${inFamily() ? tr("Family favourites", "পরিবারের পছন্দ") : tr("Your favourites", "আপনার পছন্দ")}</h2><button class="link" data-cat-go="Favourites">${tr("See all", "সব দেখুন")}</button></div>${hscroll(favs.slice(0, 10).map(rcard).join(""))}` : ""}
     <div class="section-h"><h2>${tr("Quick &amp; light tonight", "আজ রাতে দ্রুত ও হালকা")}</h2><button class="link" data-tab-go="recipes">${tr("All recipes", "সব রেসিপি")}</button></div>
-    <div class="carousel">${quick.map(rcard).join("")}</div>`;
+    ${hscroll(quick.map(rcard).join(""))}`;
   bindCommon(box);
+  box.querySelectorAll(".hs").forEach(bindHscroll);
 }
+/* sideways rows: arrows for mouse users, drag with the mouse, swipe on touch */
+const hscroll = (inner) => `<div class="hs"><button type="button" class="hs-btn prev" aria-label="${tr("Scroll left", "বাঁয়ে")}">‹</button><div class="carousel">${inner}</div><button type="button" class="hs-btn next" aria-label="${tr("Scroll right", "ডানে")}">›</button></div>`;
+function bindHscroll(hs) {
+  const c = hs.querySelector(".carousel"), prev = hs.querySelector(".prev"), next = hs.querySelector(".next");
+  const update = () => { prev.disabled = c.scrollLeft < 4; next.disabled = c.scrollLeft + c.clientWidth >= c.scrollWidth - 4; };
+  prev.onclick = () => c.scrollBy({ left: -c.clientWidth * 0.8, behavior: "smooth" });
+  next.onclick = () => c.scrollBy({ left: c.clientWidth * 0.8, behavior: "smooth" });
+  c.addEventListener("scroll", update, { passive: true });
+  requestAnimationFrame(update);
+}
+let drag = null;
+document.addEventListener("pointerdown", (e) => {
+  const el = e.pointerType === "mouse" && e.button === 0 && e.target.closest(".carousel, .chips");
+  if (el && el.scrollWidth > el.clientWidth) { drag = { el, x: e.clientX, left: el.scrollLeft, moved: false }; e.preventDefault(); }
+});
+document.addEventListener("dragstart", (e) => { if (e.target.closest && e.target.closest(".carousel, .chips")) e.preventDefault(); });
+document.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x;
+  if (!drag.moved && Math.abs(dx) > 6) { drag.moved = true; drag.el.classList.add("dragging"); }
+  if (drag.moved) drag.el.scrollLeft = drag.left - dx;
+});
+document.addEventListener("pointerup", () => { if (drag?.moved) { const el = drag.el; setTimeout(() => el.classList.remove("dragging"), 0); el.dataset.dragged = "1"; setTimeout(() => delete el.dataset.dragged, 0); } drag = null; });
+document.addEventListener("click", (e) => { const el = e.target.closest(".carousel, .chips"); if (el && el.dataset.dragged) { e.stopPropagation(); e.preventDefault(); } }, true);
+
 function bindCommon(root) {
   root.querySelectorAll("[data-r]").forEach((b) => (b.onclick = () => openRecipe(b.dataset.r)));
   root.querySelectorAll("[data-open]").forEach((b) => (b.onclick = () => openRecipe(b.dataset.open)));
@@ -630,8 +656,8 @@ async function renderFamily() {
   const box = $("s-family");
   const rows = (items) => `<div class="card" style="gap:0;padding-block:6px">${items.join("")}</div>`;
   const rowlink = (sub, ic, t, s) => `<button class="rowlink" data-sub="${sub}"><span class="ic">${ic}</span><span>${t}${s ? `<small>${s}</small>` : ""}</span><span class="chev">${ICON.chev}</span></button>`;
-  const langRow = `<div class="rowlink" style="cursor:default"><span class="ic">${ICON.globe}</span><span>${tr("Language", "ভাষা")}</span>${langPicker()}</div>`;
-  const themeRow = `<div class="rowlink" style="cursor:default"><span class="ic">${ICON.moon}</span><span>${tr("Theme", "থিম")}</span>${themePicker()}</div>`;
+  const langRow = `<div class="rowlink pick" style="cursor:default"><span class="ic">${ICON.globe}</span><span>${tr("Language", "ভাষা")}</span>${langPicker()}</div>`;
+  const themeRow = `<div class="rowlink pick" style="cursor:default"><span class="ic">${ICON.moon}</span><span>${tr("Theme", "থিম")}</span>${themePicker()}</div>`;
   const common = [langRow, themeRow,
     rowlink("plan", ICON.cal, tr("Weekly diet plan", "সাপ্তাহিক ডায়েট প্ল্যান"), tr("3 meals a day, no breakfast", "নাস্তা ছাড়া দিনে ৩ বেলা")),
     rowlink("kitchen", ICON.oven, tr("My kitchen", "আমার রান্নাঘর"), tr("Oven and air fryer settings", "ওভেন আর এয়ার ফ্রায়ার")),

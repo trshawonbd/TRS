@@ -75,7 +75,7 @@ h1, h2 { font-family: var(--display); font-weight: 400; letter-spacing: -.01em; 
 .app { max-width: 560px; margin: 0 auto; padding-inline: 20px; padding-block: 0 calc(var(--tabh) + 40px); }
 .top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 18px 12px; }
 .top h1 { font-size: 1.9rem; line-height: 1.15; }
-.screen { display: grid; gap: 22px; }
+.screen { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
 .iconbtn { position: relative; width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--surface); box-shadow: var(--shadow); }
 .iconbtn svg, .tab svg, .rowlink svg, .searchbar svg, .pagebar svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .badge { position: absolute; top: -3px; right: -3px; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 10px; background: var(--chili); color: #fff; font-size: .7rem; font-weight: 700; display: grid; place-items: center; }
@@ -92,7 +92,8 @@ h1, h2 { font-family: var(--display); font-weight: 400; letter-spacing: -.01em; 
 .btn.warm { background: var(--saffron); color: var(--on-saffron); }
 .btn.block { width: 100%; }
 .btn:disabled { opacity: .55; }
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.row2 .btn { padding-inline: 12px; text-align: center; }
 
 /* cards */
 .card { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 20px; display: grid; gap: 14px; }
@@ -113,6 +114,19 @@ h1, h2 { font-family: var(--display); font-weight: 400; letter-spacing: -.01em; 
 .mini b { font-size: 1.6rem; font-family: var(--display); font-weight: 400; }
 .carousel { display: grid; grid-auto-flow: column; grid-auto-columns: 150px; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 20px; margin-inline: -20px; padding: 4px 20px 10px; scrollbar-width: none; }
 .carousel::-webkit-scrollbar { display: none; }
+.hs { position: relative; min-width: 0; }
+.hs-btn { display: none; position: absolute; top: 58px; z-index: 2; width: 40px; height: 40px; border-radius: 50%; place-items: center; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); border: 1px solid var(--line); font-size: 1.4rem; line-height: 1; cursor: pointer; }
+.hs-btn.prev { left: -8px; } .hs-btn.next { right: -8px; }
+.hs-btn[disabled] { opacity: 0; pointer-events: none; }
+.carousel.dragging, .chips.dragging { cursor: grabbing; scroll-snap-type: none; user-select: none; }
+/* computers with a mouse: no hidden sideways scrolling */
+@media (hover: hover) and (pointer: fine) {
+  .chips { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding-inline: 0; }
+  .hs-btn { display: grid; }
+  .carousel { margin-inline: 0; padding-inline: 0; scroll-padding-inline: 0; }
+  .hs-btn.prev { left: 6px; } .hs-btn.next { right: 6px; }
+  .carousel { cursor: grab; }
+}
 .rcard { text-align: left; display: grid; gap: 8px; scroll-snap-align: start; min-width: 0; }
 .rcard .tile { aspect-ratio: 1; }
 .rcard .nm { font-weight: 600; font-size: .95rem; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -138,9 +152,9 @@ h1, h2 { font-family: var(--display); font-weight: 400; letter-spacing: -.01em; 
 .page { position: fixed; inset: 0; z-index: 20; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; transform: translateX(100%); visibility: hidden; transition: transform .28s cubic-bezier(.2,.8,.2,1), visibility 0s .28s; }
 .page.open { transform: none; visibility: visible; transition: transform .28s cubic-bezier(.2,.8,.2,1); }
 @media (prefers-reduced-motion: reduce) { .page, .page.open { transition: none; } }
-.page-in { max-width: 560px; margin: 0 auto; padding-inline: 20px; padding-block: 0 calc(110px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 20px; }
+.page-in { max-width: 560px; margin: 0 auto; padding-inline: 20px; padding-block: 0 calc(110px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
 .pagebar { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: calc(env(safe-area-inset-top, 0px) + 10px); padding-bottom: 10px; background: var(--bg); }
-.pagebar .pt { font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0; transition: opacity .2s; }
+.pagebar .pt { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0; transition: opacity .2s; }
 .pagebar.scrolled .pt { opacity: 1; }
 .r-hero .tile { aspect-ratio: 4 / 3; border-radius: 28px; }
 .r-hero .tile svg { width: 80%; }
@@ -361,6 +375,8 @@ details.fold summary::-webkit-details-marker { display: none; }
 }
 /* language switch and Bangla tweaks */
 .top-act { display: flex; gap: 8px; }
+.rowlink.pick { grid-template-columns: 36px minmax(0, 1fr) auto; }
+@media (max-width: 380px) { .rowlink.pick { grid-template-columns: 36px minmax(0, 1fr); row-gap: 8px; padding-block: 10px; } .rowlink.pick .langsw { grid-column: 2; justify-self: start; } }
 .rowlink .langsw { justify-self: end; }
 .setrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .langslot { display: flex; justify-content: flex-end; }
@@ -1054,11 +1070,37 @@ function renderHome() {
       <button class="card" data-tab-go="shop"><span class="eyebrow">${tr("Shopping", "বাজার")}</span><b class="num">${N(toBuy)}</b><span class="small muted">${tr(toBuy === 1 ? "item to buy" : "items to buy", "টি জিনিস কিনতে হবে")}</span></button>
       <button class="card" data-sub="plan"><span class="eyebrow">${tr("Diet plan", "ডায়েট প্ল্যান")}</span><b class="num">${N(planK)}</b><span class="small muted">${tr("kcal today", "ক্যালরি আজ")}</span></button>
     </div>
-    ${favs.length ? `<div class="section-h"><h2>${inFamily() ? tr("Family favourites", "পরিবারের পছন্দ") : tr("Your favourites", "আপনার পছন্দ")}</h2><button class="link" data-cat-go="Favourites">${tr("See all", "সব দেখুন")}</button></div><div class="carousel">${favs.slice(0, 10).map(rcard).join("")}</div>` : ""}
+    ${favs.length ? `<div class="section-h"><h2>${inFamily() ? tr("Family favourites", "পরিবারের পছন্দ") : tr("Your favourites", "আপনার পছন্দ")}</h2><button class="link" data-cat-go="Favourites">${tr("See all", "সব দেখুন")}</button></div>${hscroll(favs.slice(0, 10).map(rcard).join(""))}` : ""}
     <div class="section-h"><h2>${tr("Quick &amp; light tonight", "আজ রাতে দ্রুত ও হালকা")}</h2><button class="link" data-tab-go="recipes">${tr("All recipes", "সব রেসিপি")}</button></div>
-    <div class="carousel">${quick.map(rcard).join("")}</div>`;
+    ${hscroll(quick.map(rcard).join(""))}`;
   bindCommon(box);
+  box.querySelectorAll(".hs").forEach(bindHscroll);
 }
+/* sideways rows: arrows for mouse users, drag with the mouse, swipe on touch */
+const hscroll = (inner) => `<div class="hs"><button type="button" class="hs-btn prev" aria-label="${tr("Scroll left", "বাঁয়ে")}">‹</button><div class="carousel">${inner}</div><button type="button" class="hs-btn next" aria-label="${tr("Scroll right", "ডানে")}">›</button></div>`;
+function bindHscroll(hs) {
+  const c = hs.querySelector(".carousel"), prev = hs.querySelector(".prev"), next = hs.querySelector(".next");
+  const update = () => { prev.disabled = c.scrollLeft < 4; next.disabled = c.scrollLeft + c.clientWidth >= c.scrollWidth - 4; };
+  prev.onclick = () => c.scrollBy({ left: -c.clientWidth * 0.8, behavior: "smooth" });
+  next.onclick = () => c.scrollBy({ left: c.clientWidth * 0.8, behavior: "smooth" });
+  c.addEventListener("scroll", update, { passive: true });
+  requestAnimationFrame(update);
+}
+let drag = null;
+document.addEventListener("pointerdown", (e) => {
+  const el = e.pointerType === "mouse" && e.button === 0 && e.target.closest(".carousel, .chips");
+  if (el && el.scrollWidth > el.clientWidth) { drag = { el, x: e.clientX, left: el.scrollLeft, moved: false }; e.preventDefault(); }
+});
+document.addEventListener("dragstart", (e) => { if (e.target.closest && e.target.closest(".carousel, .chips")) e.preventDefault(); });
+document.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x;
+  if (!drag.moved && Math.abs(dx) > 6) { drag.moved = true; drag.el.classList.add("dragging"); }
+  if (drag.moved) drag.el.scrollLeft = drag.left - dx;
+});
+document.addEventListener("pointerup", () => { if (drag?.moved) { const el = drag.el; setTimeout(() => el.classList.remove("dragging"), 0); el.dataset.dragged = "1"; setTimeout(() => delete el.dataset.dragged, 0); } drag = null; });
+document.addEventListener("click", (e) => { const el = e.target.closest(".carousel, .chips"); if (el && el.dataset.dragged) { e.stopPropagation(); e.preventDefault(); } }, true);
+
 function bindCommon(root) {
   root.querySelectorAll("[data-r]").forEach((b) => (b.onclick = () => openRecipe(b.dataset.r)));
   root.querySelectorAll("[data-open]").forEach((b) => (b.onclick = () => openRecipe(b.dataset.open)));
@@ -1417,8 +1459,8 @@ async function renderFamily() {
   const box = $("s-family");
   const rows = (items) => `<div class="card" style="gap:0;padding-block:6px">${items.join("")}</div>`;
   const rowlink = (sub, ic, t, s) => `<button class="rowlink" data-sub="${sub}"><span class="ic">${ic}</span><span>${t}${s ? `<small>${s}</small>` : ""}</span><span class="chev">${ICON.chev}</span></button>`;
-  const langRow = `<div class="rowlink" style="cursor:default"><span class="ic">${ICON.globe}</span><span>${tr("Language", "ভাষা")}</span>${langPicker()}</div>`;
-  const themeRow = `<div class="rowlink" style="cursor:default"><span class="ic">${ICON.moon}</span><span>${tr("Theme", "থিম")}</span>${themePicker()}</div>`;
+  const langRow = `<div class="rowlink pick" style="cursor:default"><span class="ic">${ICON.globe}</span><span>${tr("Language", "ভাষা")}</span>${langPicker()}</div>`;
+  const themeRow = `<div class="rowlink pick" style="cursor:default"><span class="ic">${ICON.moon}</span><span>${tr("Theme", "থিম")}</span>${themePicker()}</div>`;
   const common = [langRow, themeRow,
     rowlink("plan", ICON.cal, tr("Weekly diet plan", "সাপ্তাহিক ডায়েট প্ল্যান"), tr("3 meals a day, no breakfast", "নাস্তা ছাড়া দিনে ৩ বেলা")),
     rowlink("kitchen", ICON.oven, tr("My kitchen", "আমার রান্নাঘর"), tr("Oven and air fryer settings", "ওভেন আর এয়ার ফ্রায়ার")),
