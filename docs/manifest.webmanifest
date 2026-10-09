@@ -1,0 +1,17 @@
+{
+  "name": "দেশি ডায়েট থালা",
+  "short_name": "দেশি থালা",
+  "description": "পরিবারের জন্য সহজ ও স্বাস্থ্যকর রেসিপি",
+  "lang": "bn",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F2F6F1",
+  "theme_color": "#1E6A44",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
