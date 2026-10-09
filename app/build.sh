@@ -28,7 +28,7 @@ HEAD
   cat src/body.html
   echo '<script src="vendor/supabase-2.45.4.js"></script>'
   echo '<script>'
-  cat src/data.js src/art.js src/player.js src/app.js
+  cat src/data.js src/data-bn.js src/art.js src/player.js src/app.js
   echo; echo 'start();'
   echo '</script>'
   echo '</body>'

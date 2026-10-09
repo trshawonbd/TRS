@@ -5,26 +5,26 @@ const PL = (() => {
   let scenes = [], idx = 0, playing = false, elapsed = 0, last = 0, raf = 0, wake = null, rec = false, recipe = null;
   let timer = null;
   const minutesIn = (s) => {
-    const m = s.match(/(\d+)(?:\s*[–-]\s*(\d+))?\s*(?:min|minute)/i);
+    const m = s.replace(/[০-৯]/g, (d) => "০১২৩৪৫৬৭৮৯".indexOf(d)).match(/(\d+)(?:\s*[–-]\s*(\d+))?\s*(?:min|minute|মিনিট)/i);
     return m ? +(m[2] || m[1]) : 0;
   };
-  const mmss = (sec) => String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
+  const mmss = (sec) => N(String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0"));
 
   function build(r) {
     const cls = TINT(r);
     const s = [];
     s.push({ d: 4200, kind: "intro", html: `<div class="pl-art ${cls}">${ART(r.id)}<i class="st s1"></i><i class="st s2"></i><i class="st s3"></i></div>
-      <p class="pl-kicker">${esc(r.origin)} · easy · light</p><h2 class="pl-title">${esc(r.name)}</h2>
-      <p class="pl-meta num">${r.kcal} kcal · ${r.p} g protein · ${esc(r.time)}</p>` });
+      <p class="pl-kicker">${esc(tOrigin(r.origin))} · ${tr("easy · light", "সহজ · হালকা")}</p><h2 class="pl-title">${esc(r.name)}</h2>
+      <p class="pl-meta num">${N(r.kcal)} ${KCAL} · ${tr("protein", "প্রোটিন")} ${N(r.p)} ${tr("g", "গ্রাম")} · ${esc(r.time)}</p>` });
     const ing = r.ing.slice(0, 8);
-    s.push({ d: Math.min(9000, 2600 + ing.length * 650), kind: "ing", html: `<p class="pl-kicker">Serves ${r.base}</p><h2 class="pl-title sm">What you need</h2>
-      <ul class="pl-ing">${ing.map(([q, u, t], i) => `<li style="animation-delay:${0.35 + i * 0.45}s"><b class="num">${q == null ? "" : fmtQty(q) + (u ? " " + esc(u) : "")}</b> ${esc(one(q, u, t))}</li>`).join("")}</ul>` });
+    s.push({ d: Math.min(9000, 2600 + ing.length * 650), kind: "ing", html: `<p class="pl-kicker">${tr(`Serves ${r.base}`, `${N(r.base)} জনের জন্য`)}</p><h2 class="pl-title sm">${tr("What you need", "যা লাগবে")}</h2>
+      <ul class="pl-ing">${ing.map(([q, u, t], i) => `<li style="animation-delay:${0.35 + i * 0.45}s"><b class="num">${q == null ? "" : esc(qtyUnit(q, u))}</b> ${esc(one(q, u, t))}</li>`).join("")}</ul>` });
     r.steps.forEach((t, i) => {
       s.push({ d: Math.min(10000, 3600 + t.length * 55), kind: "step", min: minutesIn(t), html: `<div class="pl-art small ${cls}">${ART(r.id)}<i class="st s1"></i><i class="st s2"></i></div>
-        <p class="pl-kicker num">Step ${i + 1} of ${r.steps.length}</p><p class="pl-step">${esc(t)}</p>` });
+        <p class="pl-kicker num">${tr(`Step ${i + 1} of ${r.steps.length}`, `ধাপ ${N(i + 1)} / ${N(r.steps.length)}`)}</p><p class="pl-step">${esc(t)}</p>` });
     });
-    s.push({ d: 4500, kind: "outro", html: `<div class="pl-art ${cls}">${ART(r.id)}</div><h2 class="pl-title">Ready to eat!</h2>
-      ${r.reg > r.kcal ? `<p class="pl-meta num">About ${r.reg - r.kcal} kcal lighter per serving than the usual version</p>` : ""}<p class="pl-brand">Deshi Diet Thala</p>` });
+    s.push({ d: 4500, kind: "outro", html: `<div class="pl-art ${cls}">${ART(r.id)}</div><h2 class="pl-title">${tr("Ready to eat!", "খাবার তৈরি!")}</h2>
+      ${r.reg > r.kcal ? `<p class="pl-meta num">${tr(`About ${r.reg - r.kcal} kcal lighter per serving than the usual version`, `সাধারণ রান্নার চেয়ে প্রতি জনে প্রায় ${N(r.reg - r.kcal)} ক্যালরি কম`)}</p>` : ""}<p class="pl-brand">${tr("Deshi Diet Thala", "দেশি ডায়েট থালা")}</p>` });
     return s;
   }
   function bars() {
@@ -41,7 +41,7 @@ const PL = (() => {
     void stage.offsetWidth;
     stage.classList.add("in");
     const tb = el.querySelector(".pl-timer");
-    if (sc.min && !rec) { tb.hidden = false; tb.textContent = `Start a ${sc.min}-minute timer`; tb.onclick = () => startTimer(sc.min); }
+    if (sc.min && !rec) { tb.hidden = false; tb.textContent = tr(`Start a ${sc.min}-minute timer`, `${N(sc.min)} মিনিটের টাইমার চালু করুন`); tb.onclick = () => startTimer(sc.min); }
     else tb.hidden = true;
     paint();
   }
@@ -50,7 +50,7 @@ const PL = (() => {
       b.style.width = i < idx ? "100%" : i > idx ? "0%" : Math.min(100, (elapsed / scenes[idx].d) * 100) + "%";
     });
     el.querySelector(".pl-play").innerHTML = playing ? ICON.pause : ICON.play;
-    el.querySelector(".pl-play").setAttribute("aria-label", playing ? "Pause" : "Play");
+    el.querySelector(".pl-play").setAttribute("aria-label", playing ? tr("Pause", "থামান") : tr("Play", "চালান"));
   }
   function loop(t) {
     if (!playing) return;
@@ -70,19 +70,19 @@ const PL = (() => {
     let left = min * 60;
     const tb = el.querySelector(".pl-timer");
     tb.classList.add("on");
-    tb.textContent = `⏱ ${mmss(left)} · tap to stop`;
-    tb.onclick = () => { stopTimer(); tb.textContent = `Start a ${min}-minute timer`; tb.onclick = () => startTimer(min); };
+    tb.textContent = `⏱ ${mmss(left)} · ${tr("tap to stop", "থামাতে চাপুন")}`;
+    tb.onclick = () => { stopTimer(); tb.textContent = tr(`Start a ${min}-minute timer`, `${N(min)} মিনিটের টাইমার চালু করুন`); tb.onclick = () => startTimer(min); };
     timer = setInterval(() => {
       left--;
       if (left <= 0) {
         stopTimer();
         tb.classList.add("on");
-        tb.textContent = "Time's up — next step";
+        tb.textContent = tr("Time's up — next step", "সময় শেষ! পরের ধাপে যান");
         beep();
         tb.onclick = () => { show(idx + 1); play(); };
         return;
       }
-      tb.textContent = `⏱ ${mmss(left)} · tap to stop`;
+      tb.textContent = `⏱ ${mmss(left)} · ${tr("tap to stop", "থামাতে চাপুন")}`;
     }, 1000);
   }
   function stopTimer() { if (timer) clearInterval(timer); timer = null; const tb = el.querySelector(".pl-timer"); if (tb) tb.classList.remove("on"); }

@@ -1,6 +1,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Young+Serif&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Young+Serif&family=Hind+Siliguri:wght@400;500;600;700&family=Tiro+Bangla&display=swap">
 <style>
 /* Layout: phone-first app shell. One calm screen per tab, a floating bottom bar,
    full-screen pages for recipes and settings, bottom sheets for quick choices. */
@@ -20,8 +20,8 @@
   --on-leaf: #FFFFFF;
   --on-saffron: #241806;
   --shadow: 0 1px 2px rgba(20, 30, 24, .05), 0 10px 30px rgba(20, 30, 24, .07);
-  --display: "Young Serif", Georgia, "Times New Roman", serif;
-  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Young Serif", "Tiro Bangla", "Noto Serif Bengali", Georgia, "Times New Roman", serif;
+  --body: "Figtree", "Hind Siliguri", "Noto Sans Bengali", system-ui, -apple-system, "Segoe UI", sans-serif;
   --r: 22px;
   --tabh: 68px;
   color-scheme: light;
@@ -337,4 +337,12 @@ details.fold summary::-webkit-details-marker { display: none; }
   .tab { font-size: .64rem; }
   .row2 { grid-template-columns: 1fr; }
 }
+/* language switch and Bangla tweaks */
+.langslot { display: flex; justify-content: flex-end; }
+.langsw { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--sunk); }
+.langsw button { min-height: 34px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer; }
+.langsw button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+:lang(bn) .eyebrow, :lang(bn) .pl-kicker { letter-spacing: 0; text-transform: none; font-size: .86rem; }
+:lang(bn) body { line-height: 1.6; }
+:lang(bn) h1, :lang(bn) h2, :lang(bn) h3 { letter-spacing: 0; line-height: 1.3; }
 </style>
