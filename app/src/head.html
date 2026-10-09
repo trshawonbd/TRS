@@ -172,6 +172,26 @@ h1, h2 { font-family: var(--display); font-weight: 400; letter-spacing: -.01em; 
 .ing .who { display: block; font-size: .76rem; color: var(--muted); }
 .legend { display: flex; gap: 14px; font-size: .8rem; color: var(--muted); }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.steps2 { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.steps2 li { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 14px; align-items: start; padding: 14px; }
+.s-ic { display: grid; justify-items: center; gap: 4px; padding: 8px 4px 6px; border-radius: 16px; background: var(--leaf-2); }
+.s-ic .si { width: 52px; height: 52px; }
+.s-ic span { font-size: .72rem; font-weight: 600; color: var(--leaf); text-align: center; line-height: 1.2; }
+.s-tx { display: grid; gap: 4px; }
+.s-tx p { margin: 0; line-height: 1.55; }
+.s-no { font-size: .78rem; font-weight: 700; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+:lang(bn) .s-no { letter-spacing: 0; text-transform: none; font-size: .85rem; }
+.s-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.s-tags span { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: .84rem; font-weight: 600; background: var(--saffron-2); color: var(--on-saffron); }
+.s-tags span.temp { background: var(--chili-2); color: var(--chili); }
+.s-tags svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.si .k { fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.si .w { fill: var(--surface); } .si .a { fill: #F2C46B; } .si .g { fill: #6DBE7A; } .si .c { fill: #E07A5F; }
+.pl-step-ic { background: #17331F; }
+.pl-step-ic .si { width: 70%; height: 70%; }
+.pl-step-ic .si .k { stroke: #F4F1E6; } .pl-step-ic .si .w { fill: rgba(244,241,230,.08); }
+.pl-tags { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 0; animation: plUp .55s ease .45s both; }
+.pl-tags span { padding: 4px 12px; border-radius: 999px; background: rgba(244,241,230,.12); color: #F4F1E6; font-weight: 600; font-size: .95rem; }
 .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; counter-reset: s; }
 .steps li { display: grid; grid-template-columns: 32px 1fr; gap: 12px; counter-increment: s; }
 .steps li::before { content: counter(s); width: 32px; height: 32px; border-radius: 50%; background: var(--saffron-2); color: var(--on-saffron); display: grid; place-items: center; font-weight: 700; font-size: .9rem; }
@@ -345,7 +365,8 @@ details.fold summary::-webkit-details-marker { display: none; }
 .pl-stage.in .pl-title, .pl-stage.in .pl-step { animation-delay: .25s; } .pl-stage.in .pl-meta { animation-delay: .45s; }
 .pl-stage.in .pl-ing li { animation: plUp .45s ease forwards; }
 .pl-stage.in .st { animation: plSteam 2.4s ease-out infinite; } .pl-stage.in .s2 { animation-delay: .8s; } .pl-stage.in .s3 { animation-delay: 1.6s; }
-.player.paused .pl-stage * { animation-play-state: paused !important; }
+.player.paused .pl-stage.in .pl-art { animation: plPop .6s cubic-bezier(.2,.8,.2,1) both; }
+.player.paused .pl-stage .st { animation: none; opacity: 0; }
 @keyframes plPop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes plBob { 50% { transform: translateY(-6px) rotate(-1.5deg); } }
 @keyframes plUp { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }

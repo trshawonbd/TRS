@@ -20,8 +20,9 @@ const PL = (() => {
     s.push({ d: Math.min(9000, 2600 + ing.length * 650), kind: "ing", html: `<p class="pl-kicker">${tr(`Serves ${r.base}`, `${N(r.base)} জনের জন্য`)}</p><h2 class="pl-title sm">${tr("What you need", "যা লাগবে")}</h2>
       <ul class="pl-ing">${ing.map(([q, u, t], i) => `<li style="animation-delay:${0.35 + i * 0.45}s"><b class="num">${q == null ? "" : esc(qtyUnit(q, u))}</b> ${esc(one(q, u, t))}</li>`).join("")}</ul>` });
     r.steps.forEach((t, i) => {
-      s.push({ d: Math.min(10000, 3600 + t.length * 55), kind: "step", min: minutesIn(t), html: `<div class="pl-art small ${cls}">${ART(r.id)}<i class="st s1"></i><i class="st s2"></i></div>
-        <p class="pl-kicker num">${tr(`Step ${i + 1} of ${r.steps.length}`, `ধাপ ${N(i + 1)} / ${N(r.steps.length)}`)}</p><p class="pl-step">${esc(t)}</p>` });
+      s.push({ d: Math.min(10000, 3600 + t.length * 55), kind: "step", min: minutesIn(t), html: `<div class="pl-art small pl-step-ic">${stepSvg(stepKind(r, i))}</div>
+        <p class="pl-kicker num">${tr(`Step ${i + 1} of ${r.steps.length}`, `ধাপ ${N(i + 1)} / ${N(r.steps.length)}`)} · ${STEP_LABEL()[stepKind(r, i)]}</p><p class="pl-step">${esc(t)}</p>
+        ${stepTags(r, i).length ? `<p class="pl-tags">${stepTags(r, i).map(([k, v]) => `<span>${k === "time" ? "⏱" : "🌡"} ${v}</span>`).join("")}</p>` : ""}` });
     });
     s.push({ d: 4500, kind: "outro", html: `<div class="pl-art ${cls}">${ART(r.id)}</div><h2 class="pl-title">${tr("Ready to eat!", "খাবার তৈরি!")}</h2>
       ${r.reg > r.kcal ? `<p class="pl-meta num">${tr(`About ${r.reg - r.kcal} kcal lighter per serving than the usual version`, `সাধারণ রান্নার চেয়ে প্রতি জনে প্রায় ${N(r.reg - r.kcal)} ক্যালরি কম`)}</p>` : ""}<p class="pl-brand">${tr("Deshi Diet Thala", "দেশি ডায়েট থালা")}</p>` });

@@ -42,7 +42,7 @@ function openSettings() {
 if (BNL && typeof BN !== "undefined") {
   RECIPES.forEach((r) => {
     const b = BN.R[r.id]; if (!b) return;
-    r.en = { name: r.name, time: r.time, ing: r.ing.map((x) => x[2]).join(" ") };
+    r.en = { name: r.name, time: r.time, ing: r.ing.map((x) => x[2]).join(" "), steps: r.steps };
     r.name = b.name; r.time = b.time; r.steps = b.steps; r.tip = b.tip;
     r.ing = r.ing.map(([q], i) => [q, b.ing[i][0], b.ing[i][1]]);
     Object.keys(r.how || {}).forEach((k) => { if (b.how[k]) r.how[k] = b.how[k]; });
@@ -89,6 +89,7 @@ const ICON = {
   user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>',
   moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
   camera: '<svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  temp: '<svg viewBox="0 0 24 24"><path d="M10 14V5a2 2 0 0 1 4 0v9a4 4 0 1 1-4 0z"/></svg>',
   globe: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>'
 };
 const TYPE_LABEL = BNL ? BN.TYPE : { "Main": "Mains", "Soup & Dal": "Soups & dal", "Salad": "Salads", "Snack": "Snacks", "Sweet": "Sweets", "Drink": "Drinks", "Side & Sauce": "Sides & sauces" };
@@ -392,7 +393,8 @@ function renderPage() {
   } else if (part === "steps") {
     const tools = TOOLS.filter(([k]) => r.how && r.how[k]);
     body = `<button class="btn warm block" id="play2">${ICON.play} ${tr("Play step by step", "ধাপে ধাপে ভিডিও")}</button>
-      <div class="card"><ol class="steps">${r.steps.map((s) => `<li><span>${esc(s)}</span></li>`).join("")}</ol></div>
+      <ol class="steps2">${r.steps.map((s, i) => { const k = stepKind(r, i), tags = stepTags(r, i);
+        return `<li class="card"><div class="s-ic">${stepSvg(k)}<span>${STEP_LABEL()[k]}</span></div><div class="s-tx"><span class="s-no num">${tr(`Step ${i + 1}`, `ধাপ ${N(i + 1)}`)}</span><p>${esc(s)}</p>${tags.length ? `<div class="s-tags num">${tags.map(([t, v]) => `<span class="${t}">${t === "time" ? ICON.clock : ICON.temp}${v}</span>`).join("")}</div>` : ""}</div></li>`; }).join("")}</ol>
       ${tools.length ? `<div class="card"><div class="section-h"><h2 style="font-size:1.1rem">${tr("How to cook it", "কোন যন্ত্রে কীভাবে")}</h2><button class="link" data-sub="kitchen">${tr("My appliances", "আমার যন্ত্র")}</button></div>
         <div class="how">${tools.map(([k, l]) => {
           const ao = r.ao && r.ao[k];
@@ -408,7 +410,7 @@ function renderPage() {
   $("page-body").innerHTML = `
     <div class="r-hero"><div class="tile ${TINT(r)}">${PIC(r.id)}</div>
       <div class="photo-bar">${photoOf(r.id) ? `<span class="photo-by">${tr("Photo by", "ছবি:")} ${esc(nameOf(photoOf(r.id).user_id))}</span>` : "<span></span>"}
-        <span class="photo-acts">${photoOf(r.id)?.user_id === S.user?.id ? `<button class="btn ghost sm" id="photo-del">${tr("Remove", "সরান")}</button>` : ""}<button class="btn soft sm" id="photo-add">${ICON.camera} ${photoOf(r.id) ? tr("New photo", "নতুন ছবি") : tr("Add your photo", "আপনার ছবি দিন")}</button></span></div></div>
+        <span class="photo-acts">${photoOf(r.id) && S.user && photoOf(r.id).user_id === S.user.id ? `<button class="btn ghost sm" id="photo-del">${tr("Remove", "সরান")}</button>` : ""}<button class="btn soft sm" id="photo-add">${ICON.camera} ${photoOf(r.id) ? tr("New photo", "নতুন ছবি") : tr("Add your photo", "আপনার ছবি দিন")}</button></span></div></div>
     <div class="r-title"><p class="eyebrow">${esc(tOrigin(r.origin))} · ${esc(tType(r.type))}</p><h1>${esc(r.name)}</h1>
       ${favBy.length ? `<p class="small muted">♥ ${esc(favBy.join(", "))}</p>` : ""}</div>
     <div class="stats num"><div><b>${N(r.kcal)}</b><span>${KCAL}</span></div><div><b>${N(r.p)} ${tr("g", "গ্রাম")}</b><span>${tr("protein", "প্রোটিন")}</span></div><div><b>${shortTime(r)}</b><span>${extraTime}</span></div></div>
