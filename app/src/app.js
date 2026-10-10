@@ -719,6 +719,7 @@ async function renderFamily() {
     $("name-form").onsubmit = async (e) => { e.preventDefault(); const n = $("my-name").value.trim(); if (!n) return; await sb.from("profiles").update({ name: n }).eq("id", S.user.id); await loadMembers(); refreshAll(); toast(tr("Name saved", "নাম সেভ হয়েছে")); };
     $("logout").onclick = async () => { await sb.auth.signOut(); location.reload(); };
   }
+  box.insertAdjacentHTML("beforeend", `<p class="legal"><a href="privacy.html">${tr("Privacy Policy", "প্রাইভেসি পলিসি")}</a> · <a href="terms.html">${tr("Terms of Use", "ব্যবহারের শর্ত")}</a></p>`);
   bindCommon(box);
 }
 async function testPush() {
@@ -944,7 +945,7 @@ function translateStatic() {
   T("#auth-signup > label:nth-of-type(1)", "আপনার নাম", firstText); T("#auth-signup > label:nth-of-type(2)", "ইমেইল", firstText); T("#auth-signup > label:nth-of-type(3)", "পাসওয়ার্ড", firstText);
   T(".kind label:nth-child(1)", "পরিবার"); T(".kind label:nth-child(2)", "শুধু আমি"); T("#auth-signup > button", "অ্যাকাউন্ট খুলুন");
   T("#auth-phone > label:nth-of-type(1)", "আপনার নাম", firstText); T("#auth-phone > label:nth-of-type(2)", "দেশের কোডসহ ফোন নম্বর", firstText); T("#ph-code-row", "SMS-এর কোড", firstText); T("#auth-phone > button", "কোড পাঠান");
-  T(".or", "অথবা"); T("#auth-google", "গুগল দিয়ে চালিয়ে যান"); T("#auth-guest", "অ্যাকাউন্ট ছাড়াই ব্যবহার করুন");
+  T(".or", "অথবা"); T('.legal a[href="privacy.html"]', "প্রাইভেসি পলিসি"); T('.legal a[href="terms.html"]', "ব্যবহারের শর্ত"); T("#auth-google", "গুগল দিয়ে চালিয়ে যান"); T("#auth-guest", "অ্যাকাউন্ট ছাড়াই ব্যবহার করুন");
   T("#setup h1", "আপনার পরিবার"); T("#setup .over-in > p.muted", "নতুন পরিবার তৈরি করুন, অথবা সঙ্গীর পাঠানো ৬ অক্ষরের কোড দিয়ে যোগ দিন।");
   T("#setup-create label", "পরিবারের নাম", firstText); A("#fam-name", "placeholder", "যেমন: রহমান পরিবার"); T("#setup-create button", "পরিবার তৈরি করুন");
   T("#setup-join label", "ইনভাইট কোড", firstText); T("#setup-join button", "যোগ দিন"); T("#setup-single", "আমি একাই ব্যবহার করব");
