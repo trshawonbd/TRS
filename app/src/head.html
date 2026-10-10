@@ -434,6 +434,43 @@ details.fold summary::-webkit-details-marker { display: none; }
 .iconbtn.undo { width: 36px; height: 36px; font-size: .85rem; color: var(--muted); box-shadow: none; }
 .legal { text-align: center; font-size: .82rem; color: var(--muted); margin: 4px 0 0; }
 .legal a { color: var(--muted); }
+/* my diet */
+.dform { gap: 4px; }
+.drow { display: grid; grid-template-columns: minmax(0, 8.5em) minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.dform .drow:first-child { border-top: 0; }
+.drow.col { grid-template-columns: 1fr; }
+.drow[hidden] { display: none; }
+.drow .dl { font-weight: 600; font-size: .95rem; }
+.drow .du { color: var(--muted); font-size: .9rem; }
+.drow .field { min-height: 44px; width: 100%; }
+.drow > .wrapchips { grid-column: 2 / -1; }
+.drow.col > .wrapchips { grid-column: 1; }
+.hgt { grid-column: 2 / -1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hgt .field { width: 5.2em; flex: 0 0 auto; }
+.hgt .link { min-height: 0; margin-left: auto; font-size: .85rem; }
+.bmi-tag { padding: 4px 12px; border-radius: 999px; font-size: .85rem; font-weight: 600; }
+.bmi-tag.b-ok { background: var(--leaf-2); color: var(--leaf); }
+.bmi-tag.b-under, .bmi-tag.b-over { background: var(--saffron-2); color: var(--on-saffron); }
+.bmi-tag.b-obese { background: var(--chili-2); color: var(--chili); }
+.bmi-scale { position: relative; display: grid; grid-template-columns: 17.5fr 22.5fr 22.5fr 37.5fr; gap: 2px; height: 10px; margin-top: 6px; }
+.bmi-scale i { border-radius: 4px; } .bmi-scale .s1 { background: #E9C46A; } .bmi-scale .s2 { background: var(--leaf); } .bmi-scale .s3 { background: #E9A23B; } .bmi-scale .s4 { background: var(--chili); }
+.bmi-scale b { position: absolute; top: -5px; width: 4px; height: 20px; margin-left: -2px; border-radius: 2px; background: var(--ink); box-shadow: 0 0 0 2px var(--surface); }
+.bmi-ticks { display: grid; grid-template-columns: 17.5fr 22.5fr 22.5fr 37.5fr; font-size: .72rem; color: var(--muted); }
+.bmi-ticks span { grid-column: auto; text-align: right; }
+.fit { display: inline-block; justify-self: start; padding: 6px 12px; border-radius: 999px; font-size: .85rem; font-weight: 600; }
+.fit.fit-ok { background: var(--leaf-2); color: var(--leaf); }
+.fit.fit-no { background: var(--chili-2); color: var(--chili); }
+.fast-card { display: grid; gap: 10px; text-align: left; }
+.fc-top { display: grid; gap: 2px; }
+.fc-top b { font-family: var(--display); font-weight: 400; font-size: 1.6rem; line-height: 1.2; color: var(--ink); }
+.fast-card .meter i { background: var(--saffron); }
+.fast-card.eat .meter i { background: var(--leaf); }
+.wchart { width: 100%; height: auto; display: block; }
+.wchart .ln { fill: none; stroke: var(--leaf); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.wchart .pt { fill: var(--leaf); stroke: var(--surface); stroke-width: 2; }
+.wchart .goal { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; }
+.wchart .gl { fill: var(--muted); font-size: 10px; font-family: var(--body); }
+@media (max-width: 370px) { .drow { grid-template-columns: minmax(0, 6.5em) minmax(0, 1fr) auto; } }
 /* language switch and Bangla tweaks */
 .top-act { display: flex; gap: 8px; }
 .rowlink.pick { grid-template-columns: 36px minmax(0, 1fr) auto; }
