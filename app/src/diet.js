@@ -112,6 +112,7 @@ function renderDiet(pb) {
       <label class="drow" ${d.fast === "none" ? "hidden" : ""} id="d-start-row"><span class="dl">${tr("First meal at", "প্রথম খাবার")}</span><input class="field" id="d-start" type="time" value="${esc(d.start)}"></label>
       <p class="small" id="d-fast"></p>
     </div>
+    <button class="card rowcard" data-sub="prep"><span><b>${tr("Can't cook every day?", "প্রতিদিন রাঁধতে পারেন না?")}</b><small>${prepCfg().cook < 7 ? tr(`You cook ${prepCfg().cook === 1 ? "once" : prepCfg().cook + " times"} a week for ${prepCfg().people}. See the week plan.`, `সপ্তাহে ${N(prepCfg().cook)} বার, ${N(prepCfg().people)} জনের জন্য। সপ্তাহের প্ল্যান দেখুন।`) : tr("Cook once or twice a week and eat from the fridge. Plan your week.", "সপ্তাহে ১–২ বার রেঁধে ফ্রিজ থেকে খান। সপ্তাহের প্ল্যান করুন।")}</small></span><span class="chev">${ICON.chev}</span></button>
     <div class="card" id="d-wlog"></div>
     <p class="small muted">${tr("Estimates only, using the Mifflin–St Jeor formula. If you are under 18, pregnant or breastfeeding, or have diabetes, kidney disease or another condition, ask your doctor before dieting or fasting.", "এগুলো আনুমানিক হিসাব (Mifflin–St Jeor সূত্র)। ১৮ বছরের কম হলে, গর্ভবতী বা বুকের দুধ খাওয়ালে, বা ডায়াবেটিস, কিডনির সমস্যা বা অন্য অসুখ থাকলে ডায়েট বা ফাস্টিংয়ের আগে ডাক্তারের সাথে কথা বলুন।")}</p>`;
   const save = (patch) => { saveDiet({ ...diet(), ...patch }); renderDietResults(); refreshTodayBits(); };
@@ -242,6 +243,36 @@ function mealTimes(n, d = diet()) {
   if (n === 1) return [start];
   return Array.from({ length: n }, (_, i) => Math.round((start + ((end - start) * i) / (n - 1)) / 15) * 15);
 }
+/* portions + simple sides so a meal lands close to its calorie budget (shared by the day and week plans) */
+function sizeMeal(slot, r, budget, mealsPerDay) {
+  const c = { meals: mealsPerDay };
+  // bigger budgets: 1½ or 2 servings of the main dish (2 only when eating 1–2 meals a day)
+  let serv = 1;
+  if (slot === "main") for (const sv of c.meals <= 2 ? [2, 1.5] : [1.5]) if (r.kcal * sv <= budget - 60) { serv = sv; break; }
+  let kcal = r.kcal * serv, p = Math.round(r.p * serv); const adds = [];
+  const allowed = FILL[slot === "main" && isStarchy(r) ? "mainStarch" : r.type === "Sweet" ? "light" : slot].filter((k) => !(r.type === "Sweet" && k === "egg"));
+  for (let guard = 0; guard < 3; guard++) {
+    const left = budget - kcal;
+    const pick = allowed.filter((k) => !adds.includes(k) || k === "roti").filter((k) => !(HAS[k] && HAS[k].test(recipeText(r)))).filter((k) => !(adds.includes("rice") && (k === "halfrice" || k === "roti")) && !(adds.includes("roti") && k !== "roti" && (k === "rice" || k === "halfrice")))
+    .filter((k) => ADDONS[k][0] <= left + 25 && !(k === "roti" && adds.filter((x) => x === "roti").length >= 2))
+    .sort((x, y) => ADDONS[y][0] - ADDONS[x][0])[0];
+    if (!pick || left < 35) break;
+    adds.push(pick); kcal += ADDONS[pick][0]; p += ADDONS[pick][1];
+  }
+  return { serv, adds, kcal: Math.round(kcal), p };
+}
+// a no-cook snack: just sides (yoghurt, fruit, egg, nuts) up to the budget
+function sidesOnly(slot, budget) {
+  const adds = []; let kcal = 0, p = 0;
+  for (let guard = 0; guard < 3; guard++) {
+    const left = budget - kcal;
+    const pick = FILL[slot === "light" ? "light" : "snack"].filter((k) => !adds.includes(k) && ADDONS[k][0] <= left + 25).sort((x, y) => ADDONS[y][0] - ADDONS[x][0])[0];
+    if (!pick || left < 35) break;
+    adds.push(pick); kcal += ADDONS[pick][0]; p += ADDONS[pick][1];
+  }
+  if (!adds.length) { adds.push("fruit"); kcal = ADDONS.fruit[0]; p = ADDONS.fruit[1]; }
+  return { serv: 1, adds, kcal, p };
+}
 function buildDayPlan() {
   const c = dietCalc(); if (!c.target) return null;
   const rand = seededRand(today() + "|" + (store.get(planSeedKey()) || "0") + "|" + c.target + "|" + c.meals);
@@ -254,20 +285,8 @@ function buildDayPlan() {
     if (!fits.length) fits = pool.filter((r) => r.kcal <= budget);
     if (!fits.length) fits = pool.slice().sort((a, b) => a.kcal - b.kcal).slice(0, 3);
     const r = fits[Math.floor(rand() * fits.length)]; used.add(r.id);
-    // bigger budgets: 1½ or 2 servings of the main dish (2 only when eating 1–2 meals a day)
-    let serv = 1;
-    if (slot === "main") for (const sv of c.meals <= 2 ? [2, 1.5] : [1.5]) if (r.kcal * sv <= budget - 60) { serv = sv; break; }
-    let kcal = r.kcal * serv, p = Math.round(r.p * serv); const adds = [];
-    const allowed = FILL[slot === "main" && isStarchy(r) ? "mainStarch" : r.type === "Sweet" ? "light" : slot].filter((k) => !(r.type === "Sweet" && k === "egg"));
-    for (let guard = 0; guard < 3; guard++) {
-      const left = budget - kcal;
-      const pick = allowed.filter((k) => !adds.includes(k) || k === "roti").filter((k) => !(HAS[k] && HAS[k].test(recipeText(r)))).filter((k) => !(adds.includes("rice") && (k === "halfrice" || k === "roti")) && !(adds.includes("roti") && k !== "roti" && (k === "rice" || k === "halfrice")))
-        .filter((k) => ADDONS[k][0] <= left + 25 && !(k === "roti" && adds.filter((x) => x === "roti").length >= 2))
-        .sort((x, y) => ADDONS[y][0] - ADDONS[x][0])[0];
-      if (!pick || left < 35) break;
-      adds.push(pick); kcal += ADDONS[pick][0]; p += ADDONS[pick][1];
-    }
-    return { slot, time: times[i], r, serv, adds, kcal: Math.round(kcal), p };
+    const sz = sizeMeal(slot, r, budget, c.meals);
+    return { slot, time: times[i], r, ...sz };
   });
   const total = meals.reduce((a, m) => a + m.kcal, 0), protein = meals.reduce((a, m) => a + m.p, 0);
   return { meals, total, protein, target: c.target };
@@ -284,6 +303,7 @@ function planHTML(compact) {
   const diff = pl.total - pl.target;
   return `<div class="card plan-card">
     <div class="section-h"><h2 style="font-size:1.15rem">${tr("Your plan today", "আজ আপনার খাবারের প্ল্যান")}</h2><button class="link" id="plan-shuffle" style="min-height:0">↻ ${tr("Shuffle", "বদলে দিন")}</button></div>
+    ${compact ? `<button class="link small" data-sub="prep" style="min-height:0;justify-self:start">${tr("Cook once for several days →", "একবার রেঁধে কয়েক দিন →")}</button>` : ""}
     <ol class="pm-list">${rows}</ol>
     <p class="small muted num">${tr(`Total ${fmtBig(pl.total)} of ${fmtBig(pl.target)} kcal · about ${pl.protein} g protein`, `মোট ${fmtBig(pl.total)} / ${fmtBig(pl.target)} ক্যালরি · প্রোটিন প্রায় ${N(pl.protein)} গ্রাম`)}${Math.abs(diff) > 120 ? (diff < 0 ? tr(" · add a fruit or yoghurt to reach it", " · লক্ষ্যে পৌঁছাতে একটা ফল বা দই যোগ করুন") : "") : ""}</p>
     ${compact ? "" : `<p class="small muted">${tr("Tap a dish to see the recipe. Use the same oil-light methods as the recipes, and drink plenty of water.", "রেসিপি দেখতে খাবারের নামে চাপুন। রেসিপির মতো কম তেলে রান্না করুন, আর প্রচুর পানি খান।")}</p>`}

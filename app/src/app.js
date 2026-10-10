@@ -273,7 +273,7 @@ function renderHome() {
     ${unread.length ? `<button class="msg-strip" data-tab-go="shop"><span class="dot"></span><span><b>${esc(unread[0].title)}</b><br><span class="small muted">${esc(nameOf(unread[0].from_user))} · ${ago(unread[0].created_at)}${unread.length > 1 ? tr(` · +${unread.length - 1} more`, ` · আরও ${N(unread.length - 1)}টি`) : ""}</span></span></button>` : ""}
     ${hero}
     ${fastCard()}
-    ${planHTML(true)}
+    ${prepOn() ? prepTodayHTML() : planHTML(true)}
     ${journeyCard()}
     <div class="mini">
       <button class="card" data-tab-go="shop"><span class="eyebrow">${tr("Shopping", "বাজার")}</span><b class="num">${N(toBuy)}</b><span class="small muted">${tr(toBuy === 1 ? "item to buy" : "items to buy", "টি জিনিস কিনতে হবে")}</span></button>
@@ -383,7 +383,7 @@ $("back").onclick = () => closePage(false);
 window.addEventListener("popstate", () => { if (!$("player").hidden) PL.close(); else if (!$("bs").hidden) closeSheet(); else closePage(true); });
 $("page").addEventListener("scroll", () => $("pagebar").classList.toggle("scrolled", $("page").scrollTop > 120));
 
-function openRecipe(id) { cur = R[id]; servings = cur.base; part = "ing"; openPageShell("recipe", cur.name); renderPage(); }
+function openRecipe(id, serv) { cur = R[id]; servings = serv ? Math.max(1, Math.min(60, Math.ceil(serv))) : cur.base; part = "ing"; openPageShell("recipe", cur.name); renderPage(); }
 function renderPage() {
   if (pageKind !== "recipe" || !cur) return;
   const r = cur, f = servings / r.base, fav = isMyFav(r.id);
@@ -437,7 +437,7 @@ function renderPage() {
   pb.querySelectorAll(".ing li").forEach((li) => (li.onclick = () => cycleIng(r.id, +li.dataset.i)));
   const m = $("minus"), p = $("plus");
   if (m) m.onclick = () => { if (servings > 1) { servings--; renderPage(); } };
-  if (p) p.onclick = () => { if (servings < 12) { servings++; renderPage(); } };
+  if (p) p.onclick = () => { if (servings < 60) { servings++; renderPage(); } };
   const p2 = $("play2"); if (p2) p2.onclick = () => PL.open(r.id);
   $("photo-add").onclick = () => addPhoto(r);
   const pd = $("photo-del"); if (pd) pd.onclick = () => removePhoto(r);
@@ -509,7 +509,7 @@ async function shareCard(r, items, heading) {
 /* ---------- sub pages: diet plan, kitchen, activity, tips ---------- */
 let planDay = (DAYS.find((d) => d.js === new Date().getDay()) || DAYS[0]).k;
 function openSub(kind) {
-  const titles = { plan: tr("Diet plan", "ডায়েট প্ল্যান"), kitchen: tr("My kitchen", "আমার রান্নাঘর"), activity: tr("Activity", "কে কী করেছে"), tips: tr("Healthy swaps", "স্বাস্থ্যকর বদল"), journey: tr("Our kitchen journey", "আমাদের রান্নার খাতা"), diet: tr("My diet", "আমার ডায়েট") };
+  const titles = { plan: tr("Diet plan", "ডায়েট প্ল্যান"), kitchen: tr("My kitchen", "আমার রান্নাঘর"), activity: tr("Activity", "কে কী করেছে"), tips: tr("Healthy swaps", "স্বাস্থ্যকর বদল"), journey: tr("Our kitchen journey", "আমাদের রান্নার খাতা"), diet: tr("My diet", "আমার ডায়েট"), prep: tr("Week plan", "সপ্তাহের প্ল্যান") };
   openPageShell(kind, titles[kind]);
   $("page-act").innerHTML = "";
   $("actionbar").hidden = true;
@@ -546,6 +546,8 @@ function renderSub() {
     renderJourney(pb);
   } else if (k === "diet") {
     renderDiet(pb);
+  } else if (k === "prep") {
+    renderPrep(pb);
   } else if (k === "tips") {
     pb.innerHTML = `<div class="r-title"><h1>${tr("Healthy swaps", "স্বাস্থ্যকর বদল")}</h1><p class="muted">${tr("Same taste, far fewer calories.", "একই স্বাদ, অনেক কম ক্যালরি।")}</p></div>
       <div class="card" style="gap:0">${SWAPS.map(([a, b, c]) => `<div class="act" style="grid-template-columns:1fr"><span><span class="small muted" style="text-decoration:line-through">${esc(a)}</span><br><b>${esc(b)}</b><small style="color:var(--leaf)">${esc(c)}</small></span></div>`).join("")}</div>

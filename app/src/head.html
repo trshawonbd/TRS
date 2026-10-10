@@ -482,6 +482,22 @@ details.fold summary::-webkit-details-marker { display: none; }
 details.math { margin-top: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
 details.math summary { cursor: pointer; color: var(--leaf); font-weight: 600; font-size: .92rem; }
 details.math ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 8px; font-size: .9rem; line-height: 1.55; }
+.tagc { justify-self: start; display: inline-block; margin-top: 3px; padding: 2px 8px; border-radius: 999px; font-size: .74rem; font-weight: 600; }
+.tagc.cook { background: var(--saffron-2); color: var(--ink); }
+.tagc.fr { background: var(--leaf-2); color: var(--leaf); }
+.tagc.ice { background: #DCEBF7; color: #1F5A85; }
+.tagc.nc { background: var(--sunk); color: var(--muted); }
+:root[data-theme="dark"] .tagc.ice { background: #1B2E3D; color: #9CC8EC; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tagc.ice { background: #1B2E3D; color: #9CC8EC; } }
+.cooklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.cooklist li { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 12px; align-items: center; }
+.cooklist .tile { width: 48px; height: 48px; border-radius: 12px; font-size: 1.5rem; }
+.cooklist small { display: block; color: var(--muted); font-size: .84rem; }
+details.wday { border-top: 1px solid var(--line); padding: 8px 0; }
+details.wday summary { display: flex; justify-content: space-between; align-items: baseline; cursor: pointer; list-style: none; padding: 4px 0; }
+details.wday summary::-webkit-details-marker { display: none; }
+.rowcard { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; text-align: left; }
+.rowcard small { display: block; color: var(--muted); font-size: .88rem; margin-top: 2px; }
 /* language switch and Bangla tweaks */
 .top-act { display: flex; gap: 8px; }
 .rowlink.pick { grid-template-columns: 36px minmax(0, 1fr) auto; }
