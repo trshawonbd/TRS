@@ -488,6 +488,17 @@ details.fold summary::-webkit-details-marker { display: none; }
 .wchart .goal { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; }
 .wchart .gl { fill: var(--muted); font-size: 10px; font-family: var(--body); }
 @media (max-width: 370px) { .drow { grid-template-columns: minmax(0, 6.5em) minmax(0, 1fr) auto; } }
+#d-res { display: grid; gap: 20px; }
+.pm-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.pm { display: grid; grid-template-columns: 3.4em minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--line); }
+.pm:first-child { border-top: 0; }
+.pm-time { font-weight: 600; color: var(--leaf); font-size: .9rem; }
+.pm-body { display: grid; gap: 2px; }
+.pm-body small { color: var(--muted); font-size: .84rem; line-height: 1.4; }
+.pm-k { font-weight: 600; font-size: .9rem; }
+details.math { margin-top: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
+details.math summary { cursor: pointer; color: var(--leaf); font-weight: 600; font-size: .92rem; }
+details.math ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 8px; font-size: .9rem; line-height: 1.55; }
 /* language switch and Bangla tweaks */
 .top-act { display: flex; gap: 8px; }
 .rowlink.pick { grid-template-columns: 36px minmax(0, 1fr) auto; }
@@ -1141,7 +1152,11 @@ function renderDietResults() {
       ${c.tdee ? `<p class="small muted num">${tr(`You burn about ${fmtBig(c.tdee)} kcal a day.${c.suggested ? ` Suggested: ${fmtBig(c.suggested)} kcal.` : ""}`, `আপনি দিনে প্রায় ${fmtBig(c.tdee)} ক্যালরি খরচ করেন।${c.suggested ? ` প্রস্তাবিত: ${fmtBig(c.suggested)} ক্যালরি।` : ""}`)}</p>` : ""}
       <label class="drow"><span class="dl">${tr("Set my own", "নিজে ঠিক করব")}</span><input class="field num" id="d-custom" type="number" inputmode="numeric" min="800" max="5000" step="50" value="${esc(d.custom)}" placeholder="${c.suggested || 1600}"><span class="du">${kcal}</span></label>
       ${c.custom && c.custom < 1200 ? `<p class="small" style="color:var(--chili)">${tr("Below 1,200 kcal a day is hard to do safely without a doctor.", "দিনে ১,২০০ ক্যালরির কম ডাক্তারের পরামর্শ ছাড়া নিরাপদ নয়।")}</p>` : ""}
-    </div>`;
+      ${mathHTML()}
+    </div>
+    <div id="d-plan">${planHTML(false)}</div>`;
+  const dp = $("d-plan");
+  if (dp) { const redraw = () => { dp.innerHTML = planHTML(false); bindPlan(dp, redraw); }; bindPlan(dp, redraw); }
   const cu = $("d-custom");
   cu.oninput = () => { saveDiet({ ...diet(), custom: cu.value }); clearTimeout(cu.t); cu.t = setTimeout(() => { const pos = cu.selectionStart; renderDietResults(); const n = $("d-custom"); n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} }, 600); refreshTodayBits(); };
   const meal = $("d-meal");
@@ -1183,6 +1198,113 @@ function renderWeightLog() {
 }
 /* keep Today's cards in step without re-rendering the whole screen */
 function refreshTodayBits() { if (typeof renderHome === "function") renderHome(); }
+
+/* ================= personal meal plan for a day ================= */
+// Built from the recipes: each meal gets a share of the daily target, a recipe that fits,
+// then simple portions (rice, roti, fruit, yoghurt…) to bring it close to the budget.
+const ADDONS = {
+  rice: [200, 4, "1 cup cooked rice", "১ কাপ ভাত"],
+  roti: [110, 3, "1 atta roti", "১টি আটার রুটি"],
+  halfrice: [100, 2, "½ cup cooked rice", "আধা কাপ ভাত"],
+  salad: [40, 1, "cucumber-tomato salad", "শসা-টমেটো সালাদ"],
+  yog: [100, 15, "150 g Greek yoghurt", "১৫০ গ্রাম গ্রিক দই"],
+  fruit: [80, 1, "1 fruit (guava, apple or orange)", "১টি ফল (পেয়ারা, আপেল বা কমলা)"],
+  egg: [75, 6, "1 boiled egg", "১টি সেদ্ধ ডিম"],
+  nuts: [70, 3, "10 almonds", "১০টি কাঠবাদাম"]
+};
+const SLOT_SETS = { 1: ["main", "snack"], 2: ["main", "main"], 3: ["main", "snack", "main"], 4: ["main", "snack", "main", "light"], 5: ["main", "snack", "main", "snack", "light"] };
+const SLOT_W = { main: 1, snack: 0.45, light: 0.3 };
+const POOL = {
+  main: (r) => r.type === "Main" || r.type === "Soup & Dal",
+  snack: (r) => r.type === "Snack" || r.type === "Salad" || r.type === "Sweet",
+  light: (r) => r.type === "Salad" || r.type === "Drink"
+};
+const FILL = { main: ["rice", "roti", "halfrice", "salad"], mainStarch: ["salad", "yog", "fruit", "egg"], snack: ["yog", "fruit", "egg", "nuts"], light: ["fruit", "nuts", "egg"] };
+// dishes that already bring their own rice, bread, potato or pasta don't get extra rice or roti
+const STARCHY = /\b(rice|basmati|pasta|spaghetti|noodle|bread|roti|paratha|pitta|pita|tortilla|wrap|potato|oats|couscous|bulgur|quinoa|chips|vermicelli|semolina|suji)\b/i;
+// don't add a side the dish already has (yoghurt parfait + yoghurt)
+const HAS = { yog: /yog(h)?urt|curd|doi|raita|labneh/i, egg: /\begg/i, nuts: /almond|cashew|walnut|peanut|\bnuts?\b/i, fruit: /banana|apple|mango|berr|orange|guava|fruit|dates?\b|papaya/i };
+const recipeText = (r) => ((r.en && r.en.ing) || r.ing.map((x) => x[2]).join(" ")) + " " + ((r.en && r.en.name) || r.name);
+const isStarchy = (r) => STARCHY.test(((r.en && r.en.ing) || r.ing.map((x) => x[2]).join(" ")) + " " + ((r.en && r.en.name) || r.name));
+function seededRand(str) { let h = 2166136261; for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return () => { h += 0x6d2b79f5; let t = h; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const planSeedKey = () => "plan-seed-" + today();
+function mealTimes(n, d = diet()) {
+  const f = FASTS.find((x) => x[0] === d.fast), [h, m] = (d.start || "12:00").split(":").map(Number);
+  const start = f && f[1] ? h * 60 + m : 13 * 60, end = f && f[1] ? start + (24 - f[1]) * 60 - 30 : 21 * 60;
+  if (n === 1) return [start];
+  return Array.from({ length: n }, (_, i) => Math.round((start + ((end - start) * i) / (n - 1)) / 15) * 15);
+}
+function buildDayPlan() {
+  const c = dietCalc(); if (!c.target) return null;
+  const rand = seededRand(today() + "|" + (store.get(planSeedKey()) || "0") + "|" + c.target + "|" + c.meals);
+  const slots = SLOT_SETS[c.meals], wsum = slots.reduce((a, s) => a + SLOT_W[s], 0), used = new Set();
+  const times = c.meals === 1 ? slots.map(() => mealTimes(1)[0]) : mealTimes(slots.length);
+  const meals = slots.map((slot, i) => {
+    const budget = (c.target * SLOT_W[slot]) / wsum;
+    const pool = RECIPES.filter((r) => POOL[slot](r) && !used.has(r.id));
+    let fits = pool.filter((r) => r.kcal <= budget && r.kcal >= budget * (slot === "main" ? 0.45 : 0.3));
+    if (!fits.length) fits = pool.filter((r) => r.kcal <= budget);
+    if (!fits.length) fits = pool.slice().sort((a, b) => a.kcal - b.kcal).slice(0, 3);
+    const r = fits[Math.floor(rand() * fits.length)]; used.add(r.id);
+    // bigger budgets: 1½ or 2 servings of the main dish (2 only when eating 1–2 meals a day)
+    let serv = 1;
+    if (slot === "main") for (const sv of c.meals <= 2 ? [2, 1.5] : [1.5]) if (r.kcal * sv <= budget - 60) { serv = sv; break; }
+    let kcal = r.kcal * serv, p = Math.round(r.p * serv); const adds = [];
+    const allowed = FILL[slot === "main" && isStarchy(r) ? "mainStarch" : r.type === "Sweet" ? "light" : slot].filter((k) => !(r.type === "Sweet" && k === "egg"));
+    for (let guard = 0; guard < 3; guard++) {
+      const left = budget - kcal;
+      const pick = allowed.filter((k) => !adds.includes(k) || k === "roti").filter((k) => !(HAS[k] && HAS[k].test(recipeText(r)))).filter((k) => !(adds.includes("rice") && (k === "halfrice" || k === "roti")) && !(adds.includes("roti") && k !== "roti" && (k === "rice" || k === "halfrice")))
+        .filter((k) => ADDONS[k][0] <= left + 25 && !(k === "roti" && adds.filter((x) => x === "roti").length >= 2))
+        .sort((x, y) => ADDONS[y][0] - ADDONS[x][0])[0];
+      if (!pick || left < 35) break;
+      adds.push(pick); kcal += ADDONS[pick][0]; p += ADDONS[pick][1];
+    }
+    return { slot, time: times[i], r, serv, adds, kcal: Math.round(kcal), p };
+  });
+  const total = meals.reduce((a, m) => a + m.kcal, 0), protein = meals.reduce((a, m) => a + m.p, 0);
+  return { meals, total, protein, target: c.target };
+}
+function planHTML(compact) {
+  const pl = buildDayPlan(); if (!pl) return "";
+  const kc = tr("kcal", "ক্যালরি");
+  const rows = pl.meals.map((m, i) => `<li class="pm">
+      <span class="pm-time num">${clockOf(m.time)}</span>
+      <span class="pm-body"><button class="link-plain" data-r="${m.r.id}"><b>${esc(m.r.name)}</b></button>
+        ${m.serv > 1 ? `<small class="num">${m.serv === 2 ? tr("2 servings", "২ জনের পরিমাণ") : tr("1½ servings", "দেড় জনের পরিমাণ")}</small>` : ""}
+        ${m.adds.length ? `<small>+ ${[...new Set(m.adds)].map((k) => { const n = m.adds.filter((x) => x === k).length; return (n > 1 ? N(n) + " × " : "") + esc(tr(ADDONS[k][2], ADDONS[k][3])); }).join(", ")}</small>` : ""}</span>
+      <span class="pm-k num">${fmtBig(m.kcal)}</span></li>`).join("");
+  const diff = pl.total - pl.target;
+  return `<div class="card plan-card">
+    <div class="section-h"><h2 style="font-size:1.15rem">${tr("Your plan today", "আজ আপনার খাবারের প্ল্যান")}</h2><button class="link" id="plan-shuffle" style="min-height:0">↻ ${tr("Shuffle", "বদলে দিন")}</button></div>
+    <ol class="pm-list">${rows}</ol>
+    <p class="small muted num">${tr(`Total ${fmtBig(pl.total)} of ${fmtBig(pl.target)} kcal · about ${pl.protein} g protein`, `মোট ${fmtBig(pl.total)} / ${fmtBig(pl.target)} ক্যালরি · প্রোটিন প্রায় ${N(pl.protein)} গ্রাম`)}${Math.abs(diff) > 120 ? (diff < 0 ? tr(" · add a fruit or yoghurt to reach it", " · লক্ষ্যে পৌঁছাতে একটা ফল বা দই যোগ করুন") : "") : ""}</p>
+    ${compact ? "" : `<p class="small muted">${tr("Tap a dish to see the recipe. Use the same oil-light methods as the recipes, and drink plenty of water.", "রেসিপি দেখতে খাবারের নামে চাপুন। রেসিপির মতো কম তেলে রান্না করুন, আর প্রচুর পানি খান।")}</p>`}
+  </div>`;
+}
+function bindPlan(root, rerender) {
+  const b = root.querySelector("#plan-shuffle");
+  if (b) b.onclick = () => { store.set(planSeedKey(), String((+store.get(planSeedKey()) || 0) + 1)); rerender(); };
+  if (typeof bindCommon === "function") bindCommon(root);
+}
+
+/* "How is this calculated?" with the person's own numbers */
+function mathHTML() {
+  const d = diet(), c = dietCalc(d); if (!c.ok) return "";
+  const kg = +d.kg, cm = +d.cm, age = +d.age, act = ACT().find((a) => a[0] === d.act);
+  const bmr = Math.round(10 * kg + 6.25 * cm - 5 * age + (d.sex === "m" ? 5 : -161));
+  const n = (x) => N(x), f = (x) => fmtBig(x);
+  const step = (t) => `<li>${t}</li>`;
+  return `<details class="math"><summary>${tr("How is this calculated?", "কীভাবে হিসাব হলো?")}</summary><ol>
+    ${step(tr(`<b>Calories your body uses at rest (BMR)</b>, Mifflin–St Jeor formula:<br>10 × ${kg} kg + 6.25 × ${cm} cm − 5 × ${age} years ${d.sex === "m" ? "+ 5" : "− 161"} = <b>${f(bmr)} kcal</b>`, `<b>বিশ্রামে শরীরের খরচ (BMR)</b>, Mifflin–St Jeor সূত্রে:<br>১০ × ${n(kg)} কেজি + ৬.২৫ × ${n(cm)} সেমি − ৫ × ${n(age)} বছর ${d.sex === "m" ? "+ ৫" : "− ১৬১"} = <b>${f(bmr)} ক্যালরি</b>`))}
+    ${step(tr(`<b>With your activity</b> (${esc(act[2])}): ${f(bmr)} × ${act[1]} = <b>${f(c.tdee)} kcal</b> a day to stay the same weight.`, `<b>আপনার কাজকর্ম ধরে</b> (${esc(act[2])}): ${f(bmr)} × ${n(act[1])} = <b>${f(c.tdee)} ক্যালরি</b>, এতে ওজন একই থাকে।`))}
+    ${step(c.mode === "lose" ? tr(`<b>To lose weight</b>, eat about 500 kcal less: ${f(c.tdee)} − 500 = ${f(c.tdee - 500)}, but never below ${d.sex === "m" ? "1,500" : "1,200"}. Suggested: <b>${f(c.suggested)} kcal</b>.`, `<b>ওজন কমাতে</b> দিনে প্রায় ৫০০ ক্যালরি কম: ${f(c.tdee)} − ৫০০ = ${f(c.tdee - 500)}, তবে ${d.sex === "m" ? "১,৫০০" : "১,২০০"}-এর নিচে নয়। প্রস্তাবিত: <b>${f(c.suggested)} ক্যালরি</b>।`)
+      : c.mode === "gain" ? tr(`<b>To gain weight</b>, eat about 300 kcal more: <b>${f(c.suggested)} kcal</b>.`, `<b>ওজন বাড়াতে</b> প্রায় ৩০০ ক্যালরি বেশি: <b>${f(c.suggested)} ক্যালরি</b>।`)
+      : tr(`<b>To keep your weight</b>, eat about what you burn: <b>${f(c.suggested)} kcal</b>.`, `<b>ওজন ধরে রাখতে</b> যত খরচ তত খান: <b>${f(c.suggested)} ক্যালরি</b>।`))}
+    ${c.weeks ? step(tr(`<b>Time to goal:</b> 7,700 kcal ≈ 1 kg of body fat. ${f(Math.abs(c.tdee - c.target))} kcal a day × 7 = ${f(Math.abs(c.tdee - c.target) * 7)} a week ≈ ${(Math.abs(c.tdee - c.target) * 7 / 7700).toFixed(2)} kg, so about <b>${c.weeks} weeks</b>.`, `<b>লক্ষ্যে কত দিন:</b> ৭,৭০০ ক্যালরি ≈ ১ কেজি চর্বি। দিনে ${f(Math.abs(c.tdee - c.target))} × ৭ = সপ্তাহে ${f(Math.abs(c.tdee - c.target) * 7)} ≈ ${n((Math.abs(c.tdee - c.target) * 7 / 7700).toFixed(2))} কেজি, তাই প্রায় <b>${n(c.weeks)} সপ্তাহ</b>।`)) : ""}
+    ${step(tr(`<b>Per meal:</b> ${f(c.target)} ÷ ${c.meals} meals ≈ <b>${f(c.perMeal)} kcal</b>.`, `<b>প্রতি বেলায়:</b> ${f(c.target)} ÷ ${n(c.meals)} বেলা ≈ <b>${f(c.perMeal)} ক্যালরি</b>।`))}
+    ${step(tr(`<b>BMI</b> = weight ÷ height² = ${kg} ÷ ${(cm / 100).toFixed(2)}² = <b>${c.bmi.toFixed(1)}</b>.`, `<b>BMI</b> = ওজন ÷ উচ্চতা² = ${n(kg)} ÷ ${n((cm / 100).toFixed(2))}² = <b>${n(c.bmi.toFixed(1))}</b>।`))}
+  </ol></details>`;
+}
 
 /* recipe video player: animated step-by-step scenes */
 const PL = (() => {
@@ -1604,6 +1726,7 @@ function renderHome() {
     ${unread.length ? `<button class="msg-strip" data-tab-go="shop"><span class="dot"></span><span><b>${esc(unread[0].title)}</b><br><span class="small muted">${esc(nameOf(unread[0].from_user))} · ${ago(unread[0].created_at)}${unread.length > 1 ? tr(` · +${unread.length - 1} more`, ` · আরও ${N(unread.length - 1)}টি`) : ""}</span></span></button>` : ""}
     ${hero}
     ${fastCard()}
+    ${planHTML(true)}
     ${journeyCard()}
     <div class="mini">
       <button class="card" data-tab-go="shop"><span class="eyebrow">${tr("Shopping", "বাজার")}</span><b class="num">${N(toBuy)}</b><span class="small muted">${tr(toBuy === 1 ? "item to buy" : "items to buy", "টি জিনিস কিনতে হবে")}</span></button>
@@ -1614,6 +1737,7 @@ function renderHome() {
     ${hscroll(quick.map(rcard).join(""))}`;
   bindCommon(box);
   box.querySelectorAll(".hs").forEach(bindHscroll);
+  bindPlan(box, renderHome);
   const hc = $("hero-cooked"); if (hc) hc.onclick = () => markCooked(rid);
   const hp = $("hero-photo"); if (hp) hp.onclick = () => addPhoto(R[rid]);
 }

@@ -273,6 +273,7 @@ function renderHome() {
     ${unread.length ? `<button class="msg-strip" data-tab-go="shop"><span class="dot"></span><span><b>${esc(unread[0].title)}</b><br><span class="small muted">${esc(nameOf(unread[0].from_user))} · ${ago(unread[0].created_at)}${unread.length > 1 ? tr(` · +${unread.length - 1} more`, ` · আরও ${N(unread.length - 1)}টি`) : ""}</span></span></button>` : ""}
     ${hero}
     ${fastCard()}
+    ${planHTML(true)}
     ${journeyCard()}
     <div class="mini">
       <button class="card" data-tab-go="shop"><span class="eyebrow">${tr("Shopping", "বাজার")}</span><b class="num">${N(toBuy)}</b><span class="small muted">${tr(toBuy === 1 ? "item to buy" : "items to buy", "টি জিনিস কিনতে হবে")}</span></button>
@@ -283,6 +284,7 @@ function renderHome() {
     ${hscroll(quick.map(rcard).join(""))}`;
   bindCommon(box);
   box.querySelectorAll(".hs").forEach(bindHscroll);
+  bindPlan(box, renderHome);
   const hc = $("hero-cooked"); if (hc) hc.onclick = () => markCooked(rid);
   const hp = $("hero-photo"); if (hp) hp.onclick = () => addPhoto(R[rid]);
 }

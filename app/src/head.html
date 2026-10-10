@@ -471,6 +471,17 @@ details.fold summary::-webkit-details-marker { display: none; }
 .wchart .goal { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; }
 .wchart .gl { fill: var(--muted); font-size: 10px; font-family: var(--body); }
 @media (max-width: 370px) { .drow { grid-template-columns: minmax(0, 6.5em) minmax(0, 1fr) auto; } }
+#d-res { display: grid; gap: 20px; }
+.pm-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.pm { display: grid; grid-template-columns: 3.4em minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--line); }
+.pm:first-child { border-top: 0; }
+.pm-time { font-weight: 600; color: var(--leaf); font-size: .9rem; }
+.pm-body { display: grid; gap: 2px; }
+.pm-body small { color: var(--muted); font-size: .84rem; line-height: 1.4; }
+.pm-k { font-weight: 600; font-size: .9rem; }
+details.math { margin-top: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
+details.math summary { cursor: pointer; color: var(--leaf); font-weight: 600; font-size: .92rem; }
+details.math ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 8px; font-size: .9rem; line-height: 1.55; }
 /* language switch and Bangla tweaks */
 .top-act { display: flex; gap: 8px; }
 .rowlink.pick { grid-template-columns: 36px minmax(0, 1fr) auto; }
