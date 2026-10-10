@@ -94,6 +94,11 @@ const ART = (() => {
     dimbhuna: () => bowl("#C8682B", [["egg", "", 2], ["pea", "#5C9E3A", 2]], 3),
     lau: () => bowl("#DCE8C3", [["shrimp", "#EE8A4F", 3], ["chunk", "#BFD69A", 3]], 3),
     seekh: () => skewer([["#8E4A28", 26, 12], ["#8E4A28", 26, 12], ["#8E4A28", 26, 12]]),
+    wings: () => PLATE + [[40, 72, -18], [62, 66, 12], [80, 74, -30], [56, 82, 25]].map(([x, y, r]) =>
+      `<g transform="translate(${x} ${y}) rotate(${r})"><ellipse cx="-6" cy="1" rx="9.5" ry="5.6" fill="#A9481F"/><ellipse cx="6" cy="-3" rx="8.5" ry="5.2" fill="#C2622B" transform="rotate(-38 6 -3)"/>` +
+      `<path d="M-11 0l3-2M-5 2l3-2M3 -3l3-3M8 -1l2-3" stroke="#5A2410" stroke-width="1.4" stroke-linecap="round"/><ellipse cx="-8" cy="-1" rx="3" ry="1.4" fill="rgba(255,220,170,.35)"/></g>`).join("") +
+      `<path d="M84 60l10 -6 1 10z" fill="#F2D33A"/><path d="M86 60l7 -3" stroke="#E3B81E" stroke-width="1.2"/>` +
+      `<circle cx="30" cy="62" r="4.5" fill="none" stroke="#B5689A" stroke-width="1.6"/><circle cx="36" cy="58" r="3.6" fill="none" stroke="#B5689A" stroke-width="1.4"/>` + LEAF(70, 58, 30) + LEAF(48, 62, -20),
     tikka: () => skewer([["#D9822B", 14, 13], ["#5C9E3A", 11, 11], ["#D9822B", 14, 13], ["#E9D7C3", 11, 11], ["#D9822B", 14, 13]]),
     afghankabab: () => skewer([["#D9A35B", 14, 13], ["#E9D7C3", 10, 10], ["#D9A35B", 14, 13], ["#E9D7C3", 10, 10], ["#D9A35B", 14, 13]]),
     jali: () => PLATE + `<ellipse cx="48" cy="72" rx="20" ry="11" fill="#8E4E2B"/><ellipse cx="72" cy="68" rx="20" ry="11" fill="#9A5530"/>` +
