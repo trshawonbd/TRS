@@ -219,10 +219,11 @@ async function setPlan(rid) {
 }
 
 /* ---------- tabs ---------- */
-const TITLES = { home: tr("Today", "আজ"), recipes: tr("Recipes", "রেসিপি"), spin: tr("Spin", "ঘোরান"), shop: tr("Shopping", "বাজার"), family: tr("Family", "পরিবার") };
+const TITLES = { home: tr("Today", "আজ"), plan: tr("Plan", "প্ল্যান"), recipes: tr("Recipes", "রেসিপি"), spin: tr("Spin", "ঘোরান"), shop: tr("Shopping", "বাজার"), family: tr("Me", "আমি") };
 function showTab(t) {
   tab = t;
-  document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === t));
+  if (pageKind) closePage(false);
+  document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === (t === "spin" ? "recipes" : t)));
   Object.keys(TITLES).forEach((k) => { $("s-" + k).hidden = k !== t; });
   $("title").textContent = TITLES[t];
   $("greet").textContent = t === "home" ? greeting() : "";
@@ -237,11 +238,60 @@ function greeting() {
 document.querySelectorAll(".tab").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
 $("bell").onclick = () => showTab("shop");
 $("settings").onclick = () => openSettings();
+$("spin-link").onclick = () => showTab("spin");
+$("spin-back").onclick = () => showTab("recipes");
 
 /* ---------- home ---------- */
 const daySeed = () => { const d = new Date(); return d.getFullYear() * 400 + d.getMonth() * 31 + d.getDate(); };
 function seeded(list, n, seed) { const a = list.slice(); let s = seed; for (let i = a.length - 1; i > 0; i--) { s = (s * 9301 + 49297) % 233280; const j = Math.floor((s / 233280) * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a.slice(0, n); }
 const rcard = (r) => `<button class="rcard" data-r="${r.id}"><span class="tile ${TINT(r)}">${PIC(r.id)}</span><span class="nm">${FAV_IDS().has(r.id) ? '<span class="heart">♥</span> ' : ""}${esc(r.name)}</span><span class="mt num">${N(r.kcal)} ${KCAL} · ${shortTime(r)}</span></button>`;
+/* the next meal from today's plan (personal plan or the week plan) */
+function todayMeals() { if (prepOn()) { const w = buildWeek(); const d = w && w.days.find((x) => x.date === today()); return d ? d.meals : []; } const pl = buildDayPlan(); return pl ? pl.meals : []; }
+function nextMealHTML() {
+  const meals = todayMeals(); if (!meals.length) return "";
+  const now = new Date().getHours() * 60 + new Date().getMinutes();
+  const m = meals.find((x) => x.time + 60 >= now) || meals[meals.length - 1];
+  const idx = meals.indexOf(m), later = meals.length - idx - 1;
+  const sides = m.adds && m.adds.length ? [...new Set(m.adds)].map((k) => tr(ADDONS[k][2], ADDONS[k][3])).join(", ") : "";
+  return `<article class="card hero next">
+    ${m.r ? `<div class="tile ${TINT(m.r)}">${PIC(m.r.id)}</div>` : ""}
+    <div class="hero-body">
+      <p class="eyebrow hero-eb"><span>${tr("Next meal", "পরের খাবার")} · <span class="num">${clockOf(m.time)}</span></span><button class="link" data-tab-go="plan">${tr("Full plan", "পুরো প্ল্যান")}</button></p>
+      <h2>${m.r ? esc(m.r.name) : esc(sides)}</h2>
+      <p class="small muted num">${N(m.kcal)} ${KCAL}${m.r && sides ? " · + " + esc(sides) : ""}${m.cookToday === false && m.r ? " · " + (m.freezer ? tr("from the freezer", "ফ্রিজার থেকে") : tr("from the fridge", "ফ্রিজ থেকে")) : ""}${later ? " · " + tr(`${later} more today`, `আজ আরও ${N(later)} বেলা`) : ""}</p>
+      ${m.r ? `<div class="row2"><button class="btn primary" data-open="${m.r.id}">${tr("Open recipe", "রেসিপি দেখুন")}</button>${cookedToday(m.r.id) ? `<button class="btn soft" disabled>✓ ${tr("Cooked", "রান্না হয়েছে")}</button>` : `<button class="btn soft" id="next-cooked" data-rid="${m.r.id}">✓ ${tr("We cooked it", "রান্না হয়েছে")}</button>`}</div>`
+        : `<p class="small muted">${tr("No cooking needed for this one.", "এটার জন্য রান্না লাগবে না।")}</p>`}
+    </div></article>`;
+}
+/* one compact card: target, streak, recipes tried */
+function todayStatsHTML() {
+  const c = dietCalc(), s = journeyStats();
+  return `<div class="card stats-card">
+    <button class="st" data-sub="diet"><b class="num">${c.target ? fmtBig(c.target) : "—"}</b><span>${c.target ? tr("kcal target", "ক্যালরি লক্ষ্য") : tr("Set your goal", "লক্ষ্য ঠিক করুন")}</span></button>
+    <button class="st" data-sub="journey"><b class="num">${N(s.streak)}${s.streak ? "🔥" : ""}</b><span>${tr("day streak", "দিন টানা")}</span></button>
+    <button class="st" data-sub="journey"><b class="num">${N(s.tried.size)}</b><span>${tr("recipes tried", "রেসিপি রান্না")}</span></button>
+  </div>`;
+}
+/* ---------- Plan tab: today and this week in one place ---------- */
+let planSeg = store.get("planSeg") === "week" ? "week" : "today";
+function renderPlanTab() {
+  const box = $("s-plan"); if (!box) return;
+  const c = dietCalc(), d = diet();
+  const seg = `<div class="seg" role="tablist">${[["today", tr("Today", "আজ")], ["week", tr("This week", "এই সপ্তাহ")]].map(([k, l]) => `<button role="tab" data-seg="${k}" aria-selected="${planSeg === k}">${l}</button>`).join("")}</div>`;
+  const summary = c.target ? `<button class="card rowcard" data-sub="diet"><span><b class="num">${tr(`${fmtBig(c.target)} kcal · ${c.meals} meal${c.meals > 1 ? "s" : ""}`, `${fmtBig(c.target)} ক্যালরি · ${N(c.meals)} বেলা`)}${d.fast !== "none" ? " · " + N(d.fast) : ""}</b><small>${prepCfg().cook < 7 ? tr(`Cooking ${prepCfg().cook === 1 ? "once" : prepCfg().cook + " times"} a week for ${prepCfg().people}`, `সপ্তাহে ${N(prepCfg().cook)} বার রান্না, ${N(prepCfg().people)} জনের জন্য`) : tr("Cooking every day", "প্রতিদিন রান্না")} · ${tr("change", "বদলান")}</small></span><span class="chev">${ICON.chev}</span></button>` : "";
+  if (!c.target) {
+    box.innerHTML = `<div class="card"><h2 style="font-size:1.4rem">${tr("Let's make your plan", "চলুন আপনার প্ল্যান বানাই")}</h2>
+      <p class="muted">${tr("Tell us your goal and how often you can cook. We'll plan every meal from the recipes, with times, portions and a shopping list.", "আপনার লক্ষ্য আর কতবার রাঁধতে পারবেন বলুন। রেসিপি থেকে প্রতিটা বেলার খাবার, সময়, পরিমাণ আর বাজারের তালিকা বানিয়ে দেব।")}</p>
+      <button class="btn primary block" data-sub="diet">${tr("Set my goal", "লক্ষ্য ঠিক করুন")}</button></div>`;
+    bindCommon(box); return;
+  }
+  box.innerHTML = `${summary}${seg}<div id="plan-body"></div>`;
+  const body = $("plan-body");
+  if (planSeg === "week") renderPrep(body);
+  else { body.innerHTML = prepOn() ? prepTodayHTML() : planHTML(false); const redraw = () => renderPlanTab(); bindPlan(body, redraw); }
+  box.querySelectorAll("[data-seg]").forEach((b) => (b.onclick = () => { planSeg = b.dataset.seg; store.set("planSeg", planSeg); renderPlanTab(); }));
+  bindCommon(box);
+}
 function renderHome() {
   const box = $("s-home");
   const rid = planRid(), r = rid && R[rid];
@@ -264,28 +314,15 @@ function renderHome() {
       <div class="row2"><button class="btn primary" data-tab-go="spin">${tr("Spin the wheel", "চাকা ঘোরান")}</button><button class="btn soft" data-tab-go="recipes">${tr("Browse", "রেসিপি দেখুন")}</button></div></article>`;
   }
   const unread = S.inbox.filter((x) => !x.read_at);
-  const toBuy = S.shop.filter((x) => !x.bought).length;
-  const favs = [...FAV_IDS()].filter((id) => R[id]).map((id) => R[id]);
-  const quick = seeded(RECIPES.filter((x) => MEAL(x) && minutesOf(x) <= 30), 8, daySeed());
-  const plan = DAYS.find((d) => d.js === new Date().getDay()) || DAYS[0];
-  const planK = plan.meals.reduce((a, m) => a + m[2], 0);
+  // no family dish picked yet: lead with the next meal from the personal plan
+  if (!r && dietCalc().target) hero = nextMealHTML();
   box.innerHTML = `
     ${unread.length ? `<button class="msg-strip" data-tab-go="shop"><span class="dot"></span><span><b>${esc(unread[0].title)}</b><br><span class="small muted">${esc(nameOf(unread[0].from_user))} · ${ago(unread[0].created_at)}${unread.length > 1 ? tr(` · +${unread.length - 1} more`, ` · আরও ${N(unread.length - 1)}টি`) : ""}</span></span></button>` : ""}
-    ${hero}
-    ${fastCard()}
-    ${prepOn() ? prepTodayHTML() : planHTML(true)}
-    ${journeyCard()}
-    <div class="mini">
-      <button class="card" data-tab-go="shop"><span class="eyebrow">${tr("Shopping", "বাজার")}</span><b class="num">${N(toBuy)}</b><span class="small muted">${tr(toBuy === 1 ? "item to buy" : "items to buy", "টি জিনিস কিনতে হবে")}</span></button>
-      ${dietMini()}
-    </div>
-    ${favs.length ? `<div class="section-h"><h2>${inFamily() ? tr("Family favourites", "পরিবারের পছন্দ") : tr("Your favourites", "আপনার পছন্দ")}</h2><button class="link" data-cat-go="Favourites">${tr("See all", "সব দেখুন")}</button></div>${hscroll(favs.slice(0, 10).map(rcard).join(""))}` : ""}
-    <div class="section-h"><h2>${tr("Quick &amp; light tonight", "আজ রাতে দ্রুত ও হালকা")}</h2><button class="link" data-tab-go="recipes">${tr("All recipes", "সব রেসিপি")}</button></div>
-    ${hscroll(quick.map(rcard).join(""))}`;
+    <div class="home-main">${hero}</div>
+    <div class="home-side">${fastCard()}${todayStatsHTML()}</div>`;
   bindCommon(box);
-  box.querySelectorAll(".hs").forEach(bindHscroll);
-  bindPlan(box, renderHome);
   const hc = $("hero-cooked"); if (hc) hc.onclick = () => markCooked(rid);
+  const nc = $("next-cooked"); if (nc) nc.onclick = () => markCooked(nc.dataset.rid);
   const hp = $("hero-photo"); if (hp) hp.onclick = () => addPhoto(R[rid]);
 }
 /* sideways rows: arrows for mouse users, drag with the mouse, swipe on touch */
@@ -365,6 +402,7 @@ $("bs").onclick = (e) => { if (e.target === $("bs")) closeSheet(); };
 let pageKind = null, pushed = false;
 function openPageShell(kind, title) {
   pageKind = kind;
+  $("page-body").className = kind === "recipe" ? "rp" : "";
   $("page-t").textContent = title;
   $("page").classList.add("open"); $("page").setAttribute("aria-hidden", "false");
   $("page").scrollTop = 0;
@@ -420,10 +458,11 @@ function renderPage() {
       ${r.reg > r.kcal ? `<div class="note"><b>${tr("Why it's lighter", "কেন হালকা")}</b>${tr(`A usual restaurant or festive version is about ${r.reg} kcal per serving. This one is ${r.kcal} kcal: less oil, no deep-frying, and more vegetables or yogurt.`, `রেস্টুরেন্ট বা দাওয়াতের সাধারণ রান্নায় প্রতি জনে প্রায় ${N(r.reg)} ক্যালরি। এখানে ${N(r.kcal)} ক্যালরি: তেল কম, ডুবো তেলে ভাজা নেই, সবজি বা দই বেশি।`)}</div>` : ""}`;
   }
   const extraTime = /\+/.test(r.time) ? "+ " + esc(r.time.split("+")[1].trim()) : tr("time", "সময়");
-  $("page-body").innerHTML = `
+  $("page-body").innerHTML = `<div class="rp-l">
     <div class="r-hero"><div class="tile ${TINT(r)}">${PIC(r.id)}</div>
       <div class="photo-bar">${photoOf(r.id) ? `<span class="photo-by">${tr("Photo by", "ছবি:")} ${esc(nameOf(photoOf(r.id).user_id))}</span>` : "<span></span>"}
         <span class="photo-acts">${photoOf(r.id) && S.user && photoOf(r.id).user_id === S.user.id ? `<button class="btn ghost sm" id="photo-del">${tr("Remove", "সরান")}</button>` : ""}<button class="btn soft sm" id="photo-add">${ICON.camera} ${photoOf(r.id) ? tr("New photo", "নতুন ছবি") : tr("Add your photo", "আপনার ছবি দিন")}</button></span></div></div>
+    </div><div class="rp-r">
     <div class="r-title"><p class="eyebrow">${esc(tOrigin(r.origin))} · ${esc(tType(r.type))}</p><h1>${esc(r.name)}</h1>
       ${favBy.length ? `<p class="small muted">♥ ${esc(favBy.join(", "))}</p>` : ""}
       ${timesCooked(r.id) || (S.pop.get(r.id) || 0) > 1 ? `<p class="small muted num">${[timesCooked(r.id) ? tr(`🍳 You've cooked this ${timesCooked(r.id)} time${timesCooked(r.id) > 1 ? "s" : ""}`, `🍳 আপনারা ${N(timesCooked(r.id))} বার রেঁধেছেন`) : "", (S.pop.get(r.id) || 0) > 1 ? tr(`${S.pop.get(r.id)} families cooked it`, `${N(S.pop.get(r.id))}টি পরিবার রেঁধেছে`) : ""].filter(Boolean).join(" · ")}</p>` : ""}</div>
@@ -431,7 +470,7 @@ function renderPage() {
     ${mealFitLine(r)}
     ${r.reg > r.kcal ? `<span class="lighter num">${tr(`${r.reg - r.kcal} kcal lighter than usual`, `সাধারণের চেয়ে ${N(r.reg - r.kcal)} ক্যালরি কম`)}</span>` : ""}
     <div class="seg" role="tablist">${[["ing", tr("Ingredients", "উপকরণ")], ["steps", tr("Method", "রান্নার ধাপ")], ["tips", tr("Tips", "টিপস")]].map(([k, l]) => `<button role="tab" data-p="${k}" aria-selected="${k === part}">${l}</button>`).join("")}</div>
-    ${body}`;
+    ${body}</div>`;
   const pb = $("page-body");
   pb.querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => { part = b.dataset.p; renderPage(); }));
   pb.querySelectorAll(".ing li").forEach((li) => (li.onclick = () => cycleIng(r.id, +li.dataset.i)));
@@ -509,6 +548,7 @@ async function shareCard(r, items, heading) {
 /* ---------- sub pages: diet plan, kitchen, activity, tips ---------- */
 let planDay = (DAYS.find((d) => d.js === new Date().getDay()) || DAYS[0]).k;
 function openSub(kind) {
+  if (kind === "prep") { planSeg = "week"; store.set("planSeg", "week"); showTab("plan"); renderPlanTab(); return; }
   const titles = { plan: tr("Diet plan", "ডায়েট প্ল্যান"), kitchen: tr("My kitchen", "আমার রান্নাঘর"), activity: tr("Activity", "কে কী করেছে"), tips: tr("Healthy swaps", "স্বাস্থ্যকর বদল"), journey: tr("Our kitchen journey", "আমাদের রান্নার খাতা"), diet: tr("My diet", "আমার ডায়েট"), prep: tr("Week plan", "সপ্তাহের প্ল্যান") };
   openPageShell(kind, titles[kind]);
   $("page-act").innerHTML = "";
@@ -693,21 +733,23 @@ async function renderFamily() {
   const themeRow = `<div class="rowlink pick" style="cursor:default"><span class="ic">${ICON.moon}</span><span>${tr("Theme", "থিম")}</span>${themePicker()}</div>`;
   const js = journeyStats(), nb = earnedBadges(js).length;
   const dc = dietCalc();
-  const common = [rowlink("diet", ICON.scale, tr("My diet", "আমার ডায়েট"), dc.target ? tr(`${fmtBig(dc.target)} kcal · ${dc.meals} meals${diet().fast !== "none" ? " · " + diet().fast : ""}`, `${fmtBig(dc.target)} ক্যালরি · ${N(dc.meals)} বেলা${diet().fast !== "none" ? " · " + N(diet().fast) : ""}`) : tr("Calories, BMI, goal weight, fasting", "ক্যালরি, BMI, লক্ষ্য ওজন, ফাস্টিং")), rowlink("journey", ICON.trophy, tr("Our kitchen journey", "আমাদের রান্নার খাতা"), tr(`${js.tried.size} recipes tried · ${nb} badges`, `${N(js.tried.size)}টি রেসিপি · ${N(nb)}টি ব্যাজ`)), langRow, themeRow,
-    rowlink("plan", ICON.cal, tr("Weekly diet plan", "সাপ্তাহিক ডায়েট প্ল্যান"), tr("3 meals a day, no breakfast", "নাস্তা ছাড়া দিনে ৩ বেলা")),
+  const health = [rowlink("diet", ICON.scale, tr("My diet", "আমার ডায়েট"), dc.target ? tr(`${fmtBig(dc.target)} kcal · ${dc.meals} meals${diet().fast !== "none" ? " · " + diet().fast : ""}`, `${fmtBig(dc.target)} ক্যালরি · ${N(dc.meals)} বেলা${diet().fast !== "none" ? " · " + N(diet().fast) : ""}`) : tr("Calories, BMI, goal weight, fasting", "ক্যালরি, BMI, লক্ষ্য ওজন, ফাস্টিং")), rowlink("journey", ICON.trophy, tr("Our kitchen journey", "আমাদের রান্নার খাতা"), tr(`${js.tried.size} recipes tried · ${nb} badges`, `${N(js.tried.size)}টি রেসিপি · ${N(nb)}টি ব্যাজ`))];
+  const common = [langRow, themeRow,
     rowlink("kitchen", ICON.oven, tr("My kitchen", "আমার রান্নাঘর"), tr("Oven and air fryer settings", "ওভেন আর এয়ার ফ্রায়ার")),
     rowlink("tips", ICON.bulb, tr("Healthy swaps", "স্বাস্থ্যকর বদল"), tr("Lighter versions of everyday habits", "রোজকার অভ্যাসের হালকা বিকল্প"))];
   if (!S.user) {
     box.innerHTML = `<div class="card"><h2 style="font-size:1.4rem">${tr("Cook together", "একসাথে রান্না")}</h2><p class="muted">${tr("Share favourites, today's dish and one shopping list with your partner, and get notified when they need something.", "সঙ্গীর সাথে পছন্দের রেসিপি, আজকের রান্না আর বাজারের তালিকা শেয়ার করুন। কিছু লাগলে নোটিফিকেশন পাবেন।")}</p><button class="btn primary block" id="go-login2">${tr("Sign in or create account", "লগ ইন বা অ্যাকাউন্ট খুলুন")}</button></div>${rows(common)}`;
+    box.insertAdjacentHTML("afterbegin", rows(health));
     $("go-login2").onclick = () => showAuth(true);
   } else if (!S.family) {
     box.innerHTML = `<div class="card"><h2 style="font-size:1.4rem">${tr("No family yet", "এখনো পরিবার নেই")}</h2><button class="btn primary block" id="go-setup">${tr("Create or join a family", "পরিবার তৈরি করুন বা যোগ দিন")}</button></div>${rows(common)}`;
+    box.insertAdjacentHTML("afterbegin", rows(health));
     $("go-setup").onclick = () => showSetup(true);
   } else {
     const ps = await pushState();
     const link = location.origin + location.pathname + "?join=" + S.family.code;
     const pushSub = ps === "on" ? tr("On for this phone", "এই ফোনে চালু") : ps === "denied" ? tr("Blocked in phone settings", "ফোনের সেটিংসে বন্ধ করা") : ps === "unsupported" ? (/iphone|ipad/i.test(navigator.userAgent) ? tr("Add to Home Screen first, then open from the icon", "আগে Home Screen-এ যোগ করে আইকন থেকে খুলুন") : tr("Not supported in this browser", "এই ব্রাউজারে চলে না")) : tr("Get a ping when your partner needs something", "সঙ্গীর কিছু লাগলে ফোনে জানবেন");
-    box.innerHTML = `
+    box.innerHTML = `${rows(health)}
       <div class="card fam-head">
         <div class="members">${S.members.map((m) => `<span class="av" title="${esc(m.name)}">${initial(m.name)}</span>`).join("")}</div>
         <div><h2 style="font-size:1.5rem">${esc(S.family.name)}</h2><p class="small muted">${S.members.map((m) => esc(m.user_id === S.user.id ? m.name + tr(" (you)", " (আপনি)") : m.name)).join(" · ")}</p></div>
@@ -949,8 +991,9 @@ function translateStatic() {
   T("#s-spin > p.muted", "কী রাঁধবেন ভাবছেন? মুড বেছে চাকা ঘোরান, যেখানে থামবে সেটাই আজকের রান্না।");
   A("#q", "placeholder", "রেসিপি বা উপকরণ খুঁজুন"); A("#q", "aria-label", "রেসিপি খুঁজুন"); A("#filter-btn", "aria-label", "ফিল্টার");
   T("#spin-btn", "ঘোরান");
-  ["home", "recipes", "shop", "family"].forEach((k) => T(`.tab[data-tab=${k}]`, TITLES[k]));
-  A(".tab[data-tab=spin]", "aria-label", "ঘোরান"); A("#settings", "aria-label", "ভাষা ও থিম"); A("#bell", "aria-label", "মেসেজ ও বাজার"); A("#back", "aria-label", "ফিরে যান");
+  ["home", "plan", "recipes", "shop", "family"].forEach((k) => T(`.tab[data-tab=${k}] .tl`, TITLES[k]));
+  T("#spin-link span", "কী খাবেন বুঝছেন না? ঘোরান"); T("#spin-back span", "রেসিপি");
+  A("#settings", "aria-label", "ভাষা ও থিম"); A("#bell", "aria-label", "মেসেজ ও বাজার"); A("#back", "aria-label", "ফিরে যান");
   T("#auth h1", "দেশি ডায়েট থালা");
   T("#auth .over-in > p.muted", "পুরো পরিবারের জন্য সহজ, স্বাস্থ্যকর ঘরের রান্না। পছন্দের রেসিপি শেয়ার করুন, আজকের রান্না ঠিক করুন, একে অপরকে বাজারের কথা জানান।");
   T("[data-auth-tab=login]", "লগ ইন"); T("[data-auth-tab=signup]", "নতুন অ্যাকাউন্ট"); T("[data-auth-tab=phone]", "ফোন");
@@ -968,10 +1011,10 @@ function translateStatic() {
 
 /* ---------- refresh ---------- */
 function refreshAll() {
-  renderHome(); renderRecipes(); renderShop(); renderFamily();
+  renderHome(); renderPlanTab(); renderRecipes(); renderShop(); renderFamily();
   const n = S.inbox.filter((x) => !x.read_at).length;
   $("bell-n").hidden = !n; $("bell-n").textContent = N(n);
-  const dot = document.querySelector(".tab[data-tab=shop] .dotn"); if (dot) dot.hidden = !n;
+  document.querySelectorAll(".tab[data-tab=shop] .dotn, .tab[data-tab=home] .dotn").forEach((dot) => (dot.hidden = !n));
   $("greet").textContent = tab === "home" ? greeting() : "";
   if (pageKind === "recipe") renderPage();
   if (pageKind === "journey") renderSub();

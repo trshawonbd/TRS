@@ -511,4 +511,63 @@ details.wday summary::-webkit-details-marker { display: none; }
 :lang(bn) .eyebrow, :lang(bn) .pl-kicker { letter-spacing: 0; text-transform: none; font-size: .86rem; }
 :lang(bn) body { line-height: 1.6; }
 :lang(bn) h1, :lang(bn) h2, :lang(bn) h3 { letter-spacing: 0; line-height: 1.3; }
+
+/* navigation: five tabs; sidebar on wide screens */
+.tab .tl { line-height: 1.1; }
+.tabbar .brand { display: none; }
+.brandmark.sm { width: 34px; height: 34px; border-radius: 11px; flex: none; }
+.brandmark.sm i { width: 20px; height: 20px; box-shadow: 0 0 0 2px #F8F4EC; }
+.count-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: -10px; }
+.count-row .count { margin: 0; }
+.count-row .link { min-height: 36px; font-size: .88rem; }
+.back-link { justify-self: start; min-height: 36px; font-size: .95rem; }
+.rp-l, .rp-r { display: contents; }
+.home-main, .home-side { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-content: start; }
+.stats-card { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 6px; gap: 0; }
+.stats-card .st { display: grid; gap: 2px; justify-items: center; text-align: center; padding: 12px 4px; border-radius: 0; }
+.stats-card .st + .st { box-shadow: inset 1px 0 0 var(--line); }
+.stats-card b { font-size: 1.35rem; font-weight: 700; }
+.stats-card span { font-size: .78rem; color: var(--muted); line-height: 1.25; }
+.hero.next .row2 { margin-top: 4px; }
+@media (hover: hover) and (pointer: fine) { .stats-card .st:hover { background: var(--sunk); } }
+
+@media (min-width: 600px) {
+  .app { max-width: 760px; padding-inline: 28px; }
+  .page-in { max-width: 760px; padding-inline: 28px; }
+  .tabbar .in { max-width: 600px; }
+  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .bs { align-items: center; padding: 24px; }
+  .bs-card { border-radius: 26px; max-height: 84vh; padding-bottom: 24px; }
+  .bs-card::before { display: none; }
+}
+@media (min-width: 900px) {
+  :root { --side: 232px; }
+  .tabbar { left: 0; right: auto; top: 0; bottom: 0; width: var(--side); background: var(--surface); box-shadow: inset -1px 0 0 var(--line); padding: 22px 14px; }
+  .tabbar .in { max-width: none; height: auto; display: flex; flex-direction: column; align-items: stretch; gap: 4px; background: none; border-radius: 0; box-shadow: none; }
+  .tabbar .brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 22px; font-family: var(--display); font-size: 1.15rem; line-height: 1.2; }
+  .tabbar .brand b { font-weight: 400; }
+  .tab { display: flex; justify-content: flex-start; align-items: center; gap: 14px; height: 50px; padding: 0 14px; border-radius: 14px; font-size: .98rem; }
+  .tab[aria-selected="true"] { background: var(--leaf-2); color: var(--leaf); }
+  .tab[aria-selected="true"]::after { display: none; }
+  .tab .dotn { top: 50%; right: 14px; transform: translateY(-50%); }
+  .app { max-width: none; margin: 0 0 0 var(--side); padding: 0 40px 56px; }
+  .app > header, .app > main { max-width: 1080px; margin-inline: auto; }
+  .top { padding-block: 28px 16px; }
+  .top h1 { font-size: 2.3rem; }
+  .page, .actionbar { left: var(--side); }
+  .page-in { max-width: 1080px; padding-inline: 40px; }
+  .actionbar .in { max-width: 560px; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px 20px; }
+  #s-home { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: start; gap: 24px; }
+  #s-home > .msg-strip { grid-column: 1 / -1; }
+  #s-home .hero .tile { height: 260px; }
+  #s-family { display: block; columns: 2; column-gap: 24px; }
+  #s-family > * { break-inside: avoid; margin-bottom: 24px; }
+  #s-family > .legal { column-span: all; }
+  #s-plan, #s-shop, #s-spin { max-width: 760px; }
+  #page-body.rp { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 20px 44px; align-items: start; }
+  .rp .rp-l, .rp .rp-r { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-content: start; }
+  .rp .rp-l { position: sticky; top: 76px; }
+}
+@media (min-width: 1400px) { .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); } }
 </style>
