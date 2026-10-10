@@ -12,9 +12,19 @@ const ACT = () => [
 ];
 const FASTS = [["none", 0], ["12:12", 12], ["14:10", 14], ["16:8", 16], ["18:6", 18], ["20:4", 20]];
 const r10 = (n) => Math.round(n / 10) * 10;
+const numIn = (v) => +String(v ?? "").trim().replace(/[০-৯]/g, (x) => "০১২৩৪৫৬৭৮৯".indexOf(x)).replace(",", ".");
+/* which details are still missing for an automatic target */
+function dietMissing(d = diet()) {
+  const m = [];
+  if (d.sex !== "m" && d.sex !== "f") m.push(tr("sex", "লিঙ্গ"));
+  if (!(numIn(d.age) >= 13 && numIn(d.age) <= 100)) m.push(tr("age", "বয়স"));
+  if (!(numIn(d.cm) >= 120 && numIn(d.cm) <= 230)) m.push(tr("height", "উচ্চতা"));
+  if (!(numIn(d.kg) >= 25 && numIn(d.kg) <= 300)) m.push(tr("weight", "ওজন"));
+  return m;
+}
 
 function dietCalc(d = diet()) {
-  const kg = +d.kg, cm = +d.cm, age = +d.age, goal = +d.goal;
+  const kg = numIn(d.kg), cm = numIn(d.cm), age = numIn(d.age), goal = numIn(d.goal);
   const ok = kg >= 25 && kg <= 300 && cm >= 120 && cm <= 230 && age >= 13 && age <= 100 && (d.sex === "m" || d.sex === "f");
   const bmi = kg >= 25 && cm >= 120 ? kg / (cm / 100) ** 2 : null;
   const healthy = cm >= 120 ? [Math.round(18.5 * (cm / 100) ** 2), Math.round(22.9 * (cm / 100) ** 2)] : null;
@@ -24,7 +34,7 @@ function dietCalc(d = diet()) {
     mode = goal && goal < kg - 0.5 ? "lose" : goal && goal > kg + 0.5 ? "gain" : "keep";
     suggested = r10(mode === "lose" ? Math.max(d.sex === "m" ? 1500 : 1200, tdee - 500) : mode === "gain" ? tdee + 300 : tdee);
   }
-  const custom = +d.custom >= 800 && +d.custom <= 5000 ? r10(+d.custom) : null;
+  const cust = numIn(d.custom), custom = cust >= 800 && cust <= 5000 ? r10(cust) : null;
   const target = custom || suggested;
   const meals = Math.min(5, Math.max(1, +d.meals || 3));
   const perMeal = target ? r10(target / meals) : null;
@@ -83,20 +93,20 @@ function mealFitLine(r) {
 function renderDiet(pb) {
   const d = diet();
   const chip = (k, v, label) => `<button type="button" class="chip" data-dk="${k}" data-dv="${esc(v)}" aria-pressed="${String(d[k]) === String(v)}">${label}</button>`;
-  const ft = d.cm ? Math.floor(+d.cm / 30.48) : "", inch = d.cm ? Math.round((+d.cm / 2.54) % 12) : "";
+  const ft = d.cm ? Math.floor(numIn(d.cm) / 30.48) : "", inch = d.cm ? Math.round((numIn(d.cm) / 2.54) % 12) : "";
   pb.innerHTML = `
     <div class="r-title"><p class="eyebrow">${tr("Only on this phone", "শুধু এই ফোনে থাকে")}</p><h1>${tr("My diet", "আমার ডায়েট")}</h1>
       <p class="muted">${tr("Tell us a little about you. We suggest a daily calorie target, and you can change it.", "নিজের সম্পর্কে একটু বলুন। আমরা দৈনিক ক্যালরির লক্ষ্য বলে দেব, চাইলে নিজে বদলাতে পারবেন।")}</p></div>
     <div class="card dform">
       <div class="drow"><span class="dl">${tr("I am", "আমি")}</span><div class="wrapchips">${chip("sex", "f", tr("Woman", "নারী"))}${chip("sex", "m", tr("Man", "পুরুষ"))}</div></div>
-      <label class="drow"><span class="dl">${tr("Age", "বয়স")}</span><input class="field num" id="d-age" type="number" inputmode="numeric" min="13" max="100" value="${esc(d.age)}" placeholder="30"><span class="du">${tr("years", "বছর")}</span></label>
+      <label class="drow"><span class="dl">${tr("Age", "বয়স")}</span><input class="field num" id="d-age" type="text" inputmode="numeric" min="13" max="100" value="${esc(d.age)}" placeholder="30"><span class="du">${tr("years", "বছর")}</span></label>
       <div class="drow"><span class="dl">${tr("Height", "উচ্চতা")}</span>
         <div class="hgt">${d.unit === "ft"
-          ? `<input class="field num" id="d-ft" type="number" inputmode="numeric" min="4" max="7" value="${ft}" placeholder="5"><span class="du">${tr("ft", "ফুট")}</span><input class="field num" id="d-in" type="number" inputmode="numeric" min="0" max="11" value="${inch}" placeholder="4"><span class="du">${tr("in", "ইঞ্চি")}</span>`
-          : `<input class="field num" id="d-cm" type="number" inputmode="decimal" min="120" max="230" value="${esc(d.cm)}" placeholder="163"><span class="du">${tr("cm", "সেমি")}</span>`}
+          ? `<input class="field num" id="d-ft" type="text" inputmode="numeric" min="4" max="7" value="${ft}" placeholder="5"><span class="du">${tr("ft", "ফুট")}</span><input class="field num" id="d-in" type="text" inputmode="numeric" min="0" max="11" value="${inch}" placeholder="4"><span class="du">${tr("in", "ইঞ্চি")}</span>`
+          : `<input class="field num" id="d-cm" type="text" inputmode="decimal" min="120" max="230" value="${esc(d.cm)}" placeholder="163"><span class="du">${tr("cm", "সেমি")}</span>`}
           <button type="button" class="link" id="d-unit">${d.unit === "ft" ? tr("Use cm", "সেমি দিন") : tr("Use feet", "ফুট-ইঞ্চি দিন")}</button></div></div>
-      <label class="drow"><span class="dl">${tr("Weight now", "এখনকার ওজন")}</span><input class="field num" id="d-kg" type="number" inputmode="decimal" min="25" max="300" step="0.1" value="${esc(d.kg)}" placeholder="72"><span class="du">${tr("kg", "কেজি")}</span></label>
-      <label class="drow"><span class="dl">${tr("Goal weight", "লক্ষ্য ওজন")}</span><input class="field num" id="d-goal" type="number" inputmode="decimal" min="25" max="300" step="0.1" value="${esc(d.goal)}" placeholder="65"><span class="du">${tr("kg", "কেজি")}</span></label>
+      <label class="drow"><span class="dl">${tr("Weight now", "এখনকার ওজন")}</span><input class="field num" id="d-kg" type="text" inputmode="decimal" min="25" max="300" step="0.1" value="${esc(d.kg)}" placeholder="72"><span class="du">${tr("kg", "কেজি")}</span></label>
+      <label class="drow"><span class="dl">${tr("Goal weight", "লক্ষ্য ওজন")}</span><input class="field num" id="d-goal" type="text" inputmode="decimal" min="25" max="300" step="0.1" value="${esc(d.goal)}" placeholder="65"><span class="du">${tr("kg", "কেজি")}</span></label>
       <div class="drow col"><span class="dl">${tr("How active are you?", "কতটা সক্রিয়?")}</span><div class="wrapchips">${ACT().map(([k, , l]) => chip("act", k, l)).join("")}</div></div>
     </div>
     <div id="d-res"></div>
@@ -124,7 +134,7 @@ function renderDiet(pb) {
   }));
   const num = (id, key) => { const el = $(id); if (el) el.oninput = () => save({ [key]: el.value }); };
   num("d-age", "age"); num("d-kg", "kg"); num("d-goal", "goal"); num("d-cm", "cm");
-  const ftIn = () => { const f = +$("d-ft").value || 0, i = +$("d-in").value || 0; save({ cm: f || i ? String(Math.round((f * 12 + i) * 2.54)) : "" }); };
+  const ftIn = () => { const f = numIn($("d-ft").value) || 0, i = numIn($("d-in").value) || 0; save({ cm: f || i ? String(Math.round((f * 12 + i) * 2.54)) : "" }); };
   if ($("d-ft")) { $("d-ft").oninput = ftIn; $("d-in").oninput = ftIn; }
   $("d-unit").onclick = () => { saveDiet({ ...diet(), unit: diet().unit === "ft" ? "cm" : "ft" }); renderDiet(pb); };
   $("d-start").onchange = () => save({ start: $("d-start").value || "12:00" });
@@ -156,10 +166,10 @@ function renderDietResults() {
     <div class="card">
       <div class="section-h"><h2 style="font-size:1.15rem">${tr("Daily calorie target", "দৈনিক ক্যালরির লক্ষ্য")}</h2></div>
       ${c.target ? `<div class="j-big num"><b>${fmtBig(c.target)}</b><span>${kcal} ${c.custom ? tr("(your own)", "(আপনার ঠিক করা)") : tr("(suggested)", "(প্রস্তাবিত)")}</span></div>`
-        : `<p class="muted">${tr("Fill in the details above, or type your own target below.", "উপরের ঘরগুলো পূরণ করুন, অথবা নিচে নিজের লক্ষ্য লিখুন।")}</p>`}
+        : `<p class="muted">${tr(`To work it out automatically we still need your <b>${dietMissing(d).join(", ")}</b>. Or type your own target below.`, `নিজে থেকে হিসাব করতে এখনো আপনার <b>${dietMissing(d).join(", ")}</b> লাগবে। অথবা নিচে নিজের লক্ষ্য লিখুন।`)}</p>`}
       ${goalHtml}
       ${c.tdee ? `<p class="small muted num">${tr(`You burn about ${fmtBig(c.tdee)} kcal a day.${c.suggested ? ` Suggested: ${fmtBig(c.suggested)} kcal.` : ""}`, `আপনি দিনে প্রায় ${fmtBig(c.tdee)} ক্যালরি খরচ করেন।${c.suggested ? ` প্রস্তাবিত: ${fmtBig(c.suggested)} ক্যালরি।` : ""}`)}</p>` : ""}
-      <label class="drow"><span class="dl">${tr("Set my own", "নিজে ঠিক করব")}</span><input class="field num" id="d-custom" type="number" inputmode="numeric" min="800" max="5000" step="50" value="${esc(d.custom)}" placeholder="${c.suggested || 1600}"><span class="du">${kcal}</span></label>
+      <label class="drow"><span class="dl">${tr("Set my own", "নিজে ঠিক করব")}</span><input class="field num" id="d-custom" type="text" inputmode="numeric" min="800" max="5000" step="50" value="${esc(d.custom)}" placeholder="${c.suggested || 1600}"><span class="du">${kcal}</span></label>
       ${c.custom && c.custom < 1200 ? `<p class="small" style="color:var(--chili)">${tr("Below 1,200 kcal a day is hard to do safely without a doctor.", "দিনে ১,২০০ ক্যালরির কম ডাক্তারের পরামর্শ ছাড়া নিরাপদ নয়।")}</p>` : ""}
       ${mathHTML()}
     </div>
@@ -180,7 +190,7 @@ function renderWeightLog() {
   const pts = log.slice(-30);
   let chart = "";
   if (pts.length >= 2) {
-    const W = 300, H = 110, pad = 14, ws = pts.map((p) => p.kg), goal = +d.goal || null;
+    const W = 300, H = 110, pad = 14, ws = pts.map((p) => p.kg), goal = numIn(d.goal) || null;
     const lo = Math.min(...ws, goal || Infinity) - 1, hi = Math.max(...ws, goal || -Infinity) + 1;
     const x = (i) => pad + (i * (W - pad * 2)) / (pts.length - 1), y = (v) => pad + ((hi - v) * (H - pad * 2)) / (hi - lo);
     chart = `<svg class="wchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(tr("Weight over time", "সময়ের সাথে ওজন"))}">
@@ -192,11 +202,11 @@ function renderWeightLog() {
   const first = log[0], change = first && last ? +(last.kg - first.kg).toFixed(1) : 0;
   box.innerHTML = `<div class="section-h"><h2 style="font-size:1.15rem">${tr("Weight log", "ওজনের খাতা")}</h2>${log.length ? `<span class="small muted num">${change === 0 ? "" : (change < 0 ? "↓ " : "↑ ") + N(Math.abs(change)) + " " + tr("kg since start", "কেজি শুরু থেকে")}</span>` : ""}</div>
     ${chart || `<p class="small muted">${tr("Log your weight once a week, same time of day. Your progress shows here.", "সপ্তাহে একবার, একই সময়ে ওজন লিখুন। এখানে অগ্রগতি দেখাবে।")}</p>`}
-    <form class="addbar" id="w-add"><input class="field num" id="w-kg" type="number" inputmode="decimal" step="0.1" min="25" max="300" placeholder="${last ? last.kg : d.kg || "70"}" aria-label="${tr("Weight in kg", "ওজন কেজিতে")}"><button class="btn primary">${tr("Save today", "আজকের ওজন")}</button></form>
+    <form class="addbar" id="w-add"><input class="field num" id="w-kg" type="text" inputmode="decimal" step="0.1" min="25" max="300" placeholder="${last ? last.kg : d.kg || "70"}" aria-label="${tr("Weight in kg", "ওজন কেজিতে")}"><button class="btn primary">${tr("Save today", "আজকের ওজন")}</button></form>
     ${log.length ? `<p class="small muted num">${tr(`Last: ${last.kg} kg on ${last.d}`, `শেষ: ${N(last.d)} তারিখে ${N(last.kg)} কেজি`)} · <button type="button" class="link" id="w-undo" style="min-height:0">${tr("Remove last", "শেষটা মুছুন")}</button></p>` : ""}`;
   $("w-add").onsubmit = (e) => {
     e.preventDefault();
-    const v = +$("w-kg").value; if (!(v >= 25 && v <= 300)) return toast(tr("Enter a weight in kg", "কেজিতে ওজন লিখুন"));
+    const v = numIn($("w-kg").value); if (!(v >= 25 && v <= 300)) return toast(tr("Enter a weight in kg", "কেজিতে ওজন লিখুন"));
     const l = weightLog().filter((x) => x.d !== today()); l.push({ d: today(), kg: Math.round(v * 10) / 10 }); l.sort((a, b) => (a.d < b.d ? -1 : 1));
     store.set("weights", JSON.stringify(l.slice(-200)));
     saveDiet({ ...diet(), kg: String(Math.round(v * 10) / 10) });
@@ -318,7 +328,7 @@ function bindPlan(root, rerender) {
 /* "How is this calculated?" with the person's own numbers */
 function mathHTML() {
   const d = diet(), c = dietCalc(d); if (!c.ok) return "";
-  const kg = +d.kg, cm = +d.cm, age = +d.age, act = ACT().find((a) => a[0] === d.act);
+  const kg = numIn(d.kg), cm = numIn(d.cm), age = numIn(d.age), act = ACT().find((a) => a[0] === d.act);
   const bmr = Math.round(10 * kg + 6.25 * cm - 5 * age + (d.sex === "m" ? 5 : -161));
   const n = (x) => N(x), f = (x) => fmtBig(x);
   const step = (t) => `<li>${t}</li>`;

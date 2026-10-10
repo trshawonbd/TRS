@@ -263,11 +263,24 @@ function nextMealHTML() {
         : `<p class="small muted">${tr("No cooking needed for this one.", "এটার জন্য রান্না লাগবে না।")}</p>`}
     </div></article>`;
 }
+/* Today screen: people choose which cards they want */
+function homeHide() { try { return JSON.parse(store.get("homeHide") || "{}"); } catch (e) { return {}; } }
+function setHomeHide(p) { store.set("homeHide", JSON.stringify({ ...homeHide(), ...p })); }
+function openHomeEdit() {
+  const h = homeHide();
+  const rows = [["hero", tr("Today's dish and next meal", "আজকের রান্না আর পরের খাবার")], ["fast", tr("Fasting timer", "ফাস্টিংয়ের টাইমার")], ["stats", tr("Calories, streak and recipes tried", "ক্যালরি, টানা দিন আর রান্না করা রেসিপি")], ["msgs", tr("New messages", "নতুন মেসেজ")]];
+  openSheet(`<h3>${tr("Customise Today", "আজকের পাতা সাজান")}</h3>
+    <p class="small muted">${tr("Untick what you don't want to see.", "যা দেখতে চান না, টিক তুলে দিন।")}</p>
+    <div class="checks">${rows.map(([k, l]) => `<label><input type="checkbox" data-k="${k}" ${h[k] ? "" : "checked"}> ${l}</label>`).join("")}</div>
+    <button class="btn primary block" id="he-ok">${tr("Done", "ঠিক আছে")}</button>`);
+  $("bs-card").querySelectorAll("[data-k]").forEach((c) => (c.onchange = () => { setHomeHide({ [c.dataset.k]: !c.checked }); renderHome(); }));
+  $("he-ok").onclick = closeSheet;
+}
 /* one compact card: target, streak, recipes tried */
 function todayStatsHTML() {
   const c = dietCalc(), s = journeyStats();
   return `<div class="card stats-card">
-    <button class="st" data-sub="diet"><b class="num">${c.target ? fmtBig(c.target) : "—"}</b><span>${c.target ? tr("kcal target", "ক্যালরি লক্ষ্য") : tr("Set your goal", "লক্ষ্য ঠিক করুন")}</span></button>
+    <button class="st" data-sub="diet"><b class="num">${c.target ? fmtBig(c.target) : "—"}</b><span>${c.target ? tr("kcal target", "ক্যালরি লক্ষ্য") : dietMissing().length < 4 ? tr(`Add your ${dietMissing().join(", ")}`, `${dietMissing().join(", ")} দিন`) : tr("Set your goal", "লক্ষ্য ঠিক করুন")}</span></button>
     <button class="st" data-sub="journey"><b class="num">${N(s.streak)}${s.streak ? "🔥" : ""}</b><span>${tr("day streak", "দিন টানা")}</span></button>
     <button class="st" data-sub="journey"><b class="num">${N(s.tried.size)}</b><span>${tr("recipes tried", "রেসিপি রান্না")}</span></button>
   </div>`;
@@ -305,7 +318,7 @@ function renderHome() {
       <div class="progress" aria-hidden="true"><i style="width:${Math.round((have / total) * 100)}%"></i></div>
       <p class="small muted num">${tr(`${have} of ${total} ingredients ready`, `${N(total)}টির মধ্যে ${N(have)}টি উপকরণ আছে`)}${need ? ` · <b style="color:var(--chili)">${tr(`${need} missing`, `${N(need)}টি নেই`)}</b>` : ""}</p>
       <div class="row2">${cookedToday(r.id)
-        ? `<button class="btn soft" disabled>✓ ${tr("Cooked", "রান্না হয়েছে")}</button>${inFamily() && !photoOf(r.id) ? `<button class="btn primary" id="hero-photo">${ICON.camera} ${tr("Add photo", "ছবি দিন")}</button>` : `<button class="btn primary" data-sub="journey">${tr("Our journey", "রান্নার খাতা")}</button>`}`
+        ? `<button class="btn soft" id="hero-done" title="${tr("Put this away for today", "আজকের মতো সরিয়ে রাখুন")}">✓ ${tr("Done, hide", "শেষ, সরান")}</button>${inFamily() && !photoOf(r.id) ? `<button class="btn primary" id="hero-photo">${ICON.camera} ${tr("Add photo", "ছবি দিন")}</button>` : `<button class="btn primary" data-sub="journey">${tr("Our journey", "রান্নার খাতা")}</button>`}`
         : `<button class="btn primary" data-open="${r.id}">${tr("Check ingredients", "উপকরণ দেখুন")}</button><button class="btn soft" id="hero-cooked">✓ ${tr("We cooked it", "রান্না হয়েছে")}</button>`}</div>
     </div></article>`;
   } else {
@@ -314,15 +327,23 @@ function renderHome() {
       <div class="row2"><button class="btn primary" data-tab-go="spin">${tr("Spin the wheel", "চাকা ঘোরান")}</button><button class="btn soft" data-tab-go="recipes">${tr("Browse", "রেসিপি দেখুন")}</button></div></article>`;
   }
   const unread = S.inbox.filter((x) => !x.read_at);
-  // no family dish picked yet: lead with the next meal from the personal plan
-  if (!r && dietCalc().target) hero = nextMealHTML();
+  const hide = homeHide(), cookedDone = r && cookedToday(r.id) && hide.doneDish === today();
+  // no family dish picked yet (or it's cooked and put away): lead with the next meal from the personal plan
+  if ((!r || cookedDone) && dietCalc().target) hero = nextMealHTML() || hero;
+  else if (cookedDone) hero = "";
+  if (hide.hero) hero = "";
+  const side = (hide.fast ? "" : fastCard()) + (hide.stats ? "" : todayStatsHTML());
   box.innerHTML = `
-    ${unread.length ? `<button class="msg-strip" data-tab-go="shop"><span class="dot"></span><span><b>${esc(unread[0].title)}</b><br><span class="small muted">${esc(nameOf(unread[0].from_user))} · ${ago(unread[0].created_at)}${unread.length > 1 ? tr(` · +${unread.length - 1} more`, ` · আরও ${N(unread.length - 1)}টি`) : ""}</span></span></button>` : ""}
-    <div class="home-main">${hero}</div>
-    <div class="home-side">${fastCard()}${todayStatsHTML()}</div>`;
+    ${unread.length && !hide.msgs ? `<button class="msg-strip" data-tab-go="shop"><span class="dot"></span><span><b>${esc(unread[0].title)}</b><br><span class="small muted">${esc(nameOf(unread[0].from_user))} · ${ago(unread[0].created_at)}${unread.length > 1 ? tr(` · +${unread.length - 1} more`, ` · আরও ${N(unread.length - 1)}টি`) : ""}</span></span></button>` : ""}
+    ${hero ? `<div class="home-main">${hero}</div>` : ""}
+    ${side ? `<div class="home-side">${side}</div>` : ""}
+    ${!hero && !side ? `<p class="empty">${tr("Your Today screen is clear.", "আজকের পাতা একদম ফাঁকা।")}</p>` : ""}
+    <button class="link home-edit" id="home-edit" type="button">${ICON.edit || "✎"} ${tr("Customise this screen", "এই পাতা সাজান")}</button>`;
   bindCommon(box);
   const hc = $("hero-cooked"); if (hc) hc.onclick = () => markCooked(rid);
   const nc = $("next-cooked"); if (nc) nc.onclick = () => markCooked(nc.dataset.rid);
+  const hd = $("hero-done"); if (hd) hd.onclick = () => { setHomeHide({ doneDish: today() }); renderHome(); };
+  $("home-edit").onclick = openHomeEdit;
   const hp = $("hero-photo"); if (hp) hp.onclick = () => addPhoto(R[rid]);
 }
 /* sideways rows: arrows for mouse users, drag with the mouse, swipe on touch */
