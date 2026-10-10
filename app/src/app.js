@@ -840,7 +840,20 @@ async function enablePush() {
 function showAuth(show) { $("auth").hidden = !show; document.body.classList.toggle("lock", show); }
 function showSetup(show) { $("setup").hidden = !show; document.body.classList.toggle("lock", show); if (show && store.get("pendingJoin")) $("fam-code").value = store.get("pendingJoin"); }
 function authMsg(t, ok) { const m = $("auth-msg"); m.textContent = t || ""; m.className = "auth-msg" + (ok ? " ok" : ""); }
+/* only offer the login methods that are switched on in Supabase (Authentication → Sign In / Providers) */
+async function showEnabledProviders() {
+  let ext = {};
+  try {
+    const res = await fetch("https://fschjgkvvjcwfpbgwiei.supabase.co/auth/v1/settings", { headers: { apikey: "sb_publishable_mf_sr2nS345glCGeovJJkw_vxP9V3lC" } });
+    if (res.ok) ext = (await res.json()).external || {};
+  } catch (e) {}
+  $("auth-google").hidden = !ext.google;
+  $("auth-or").hidden = !ext.google;
+  const ph = document.querySelector("[data-auth-tab=phone]");
+  ph.hidden = !ext.phone;
+}
 function bindAuth() {
+  showEnabledProviders();
   document.querySelectorAll("[data-auth-tab]").forEach((b) => (b.onclick = () => {
     document.querySelectorAll("[data-auth-tab]").forEach((x) => x.setAttribute("aria-selected", x === b));
     ["login", "signup", "phone"].forEach((k) => ($("auth-" + k).hidden = b.dataset.authTab !== k));
