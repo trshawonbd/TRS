@@ -268,7 +268,7 @@ function homeHide() { try { return JSON.parse(store.get("homeHide") || "{}"); } 
 function setHomeHide(p) { store.set("homeHide", JSON.stringify({ ...homeHide(), ...p })); }
 function openHomeEdit() {
   const h = homeHide();
-  const rows = [["hero", tr("Today's dish and next meal", "আজকের রান্না আর পরের খাবার")], ["fast", tr("Fasting timer", "ফাস্টিংয়ের টাইমার")], ["stats", tr("Calories, streak and recipes tried", "ক্যালরি, টানা দিন আর রান্না করা রেসিপি")], ["msgs", tr("New messages", "নতুন মেসেজ")]];
+  const rows = [["hero", tr("Today's dish and next meal", "আজকের রান্না আর পরের খাবার")], ["fast", tr("Fasting timer", "ফাস্টিংয়ের টাইমার")], ["stats", tr("Calories, streak and recipes tried", "ক্যালরি, টানা দিন আর রান্না করা রেসিপি")], ["spin", tr("Spin the wheel", "চাকা ঘোরান")], ["msgs", tr("New messages", "নতুন মেসেজ")]];
   openSheet(`<h3>${tr("Customise Today", "আজকের পাতা সাজান")}</h3>
     <p class="small muted">${tr("Untick what you don't want to see.", "যা দেখতে চান না, টিক তুলে দিন।")}</p>
     <div class="checks">${rows.map(([k, l]) => `<label><input type="checkbox" data-k="${k}" ${h[k] ? "" : "checked"}> ${l}</label>`).join("")}</div>
@@ -332,6 +332,8 @@ function renderHome() {
   if ((!r || cookedDone) && dietCalc().target) hero = nextMealHTML() || hero;
   else if (cookedDone) hero = "";
   if (hide.hero) hero = "";
+  const spinRow = hide.spin ? "" : `<button class="spin-banner" data-tab-go="spin"><span class="sb-wheel" aria-hidden="true"></span><span class="sb-tx"><b>${tr("Can't decide what to cook?", "কী রাঁধবেন ঠিক করতে পারছেন না?")}</b><small>${tr("Spin the wheel", "চাকা ঘোরান")}</small></span><span class="sb-go" aria-hidden="true">›</span></button>`;
+  if (!hero.includes('class="btn primary" data-tab-go="spin"')) hero += spinRow;
   const side = (hide.fast ? "" : fastCard()) + (hide.stats ? "" : todayStatsHTML());
   box.innerHTML = `
     ${unread.length && !hide.msgs ? `<button class="msg-strip" data-tab-go="shop"><span class="dot"></span><span><b>${esc(unread[0].title)}</b><br><span class="small muted">${esc(nameOf(unread[0].from_user))} · ${ago(unread[0].created_at)}${unread.length > 1 ? tr(` · +${unread.length - 1} more`, ` · আরও ${N(unread.length - 1)}টি`) : ""}</span></span></button>` : ""}
@@ -1013,7 +1015,7 @@ function translateStatic() {
   A("#q", "placeholder", "রেসিপি বা উপকরণ খুঁজুন"); A("#q", "aria-label", "রেসিপি খুঁজুন"); A("#filter-btn", "aria-label", "ফিল্টার");
   T("#spin-btn", "ঘোরান");
   ["home", "plan", "recipes", "shop", "family"].forEach((k) => T(`.tab[data-tab=${k}] .tl`, TITLES[k]));
-  T("#spin-link span", "কী খাবেন বুঝছেন না? ঘোরান"); T("#spin-back span", "রেসিপি");
+  T("#spin-link b", "কী রাঁধবেন ঠিক করতে পারছেন না?"); T("#spin-link small", "চাকা ঘোরান"); T("#spin-back span", "রেসিপি");
   A("#settings", "aria-label", "ভাষা ও থিম"); A("#bell", "aria-label", "মেসেজ ও বাজার"); A("#back", "aria-label", "ফিরে যান");
   T("#auth h1", "দেশি ডায়েট থালা");
   T("#auth .over-in > p.muted", "পুরো পরিবারের জন্য সহজ, স্বাস্থ্যকর ঘরের রান্না। পছন্দের রেসিপি শেয়ার করুন, আজকের রান্না ঠিক করুন, একে অপরকে বাজারের কথা জানান।");

@@ -572,4 +572,14 @@ details.wday summary::-webkit-details-marker { display: none; }
   .rp .rp-l { position: sticky; top: 76px; }
 }
 @media (min-width: 1400px) { .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); } }
+
+/* spin shortcut */
+.spin-banner { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 14px; align-items: center; text-align: left; width: 100%; padding: 12px 16px; border-radius: 20px; background: var(--saffron-2); color: var(--ink); box-shadow: var(--shadow); }
+.sb-wheel { width: 48px; height: 48px; border-radius: 50%; background: conic-gradient(#E8742A 0 60deg, #F0B53E 60deg 120deg, #8CC152 120deg 180deg, #1F5C3D 180deg 240deg, #E07A5F 240deg 300deg, #F2C46B 300deg 360deg); box-shadow: inset 0 0 0 3px rgba(255,255,255,.6); position: relative; }
+.sb-wheel::after { content: ""; position: absolute; inset: 17px; border-radius: 50%; background: #fff; }
+.sb-tx { display: grid; gap: 2px; min-width: 0; }
+.sb-tx b { font-size: 1rem; }
+.sb-tx small { font-size: .88rem; opacity: .85; }
+.sb-go { font-size: 1.6rem; line-height: 1; }
+@media (hover: hover) and (pointer: fine) { .spin-banner:hover .sb-wheel { transform: rotate(60deg); } .sb-wheel { transition: transform .4s ease; } }
 </style>
