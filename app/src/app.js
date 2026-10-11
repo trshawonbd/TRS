@@ -98,9 +98,9 @@ const TYPE_LABEL = BNL ? BN.TYPE : { "Main": "Mains", "Soup & Dal": "Soups & dal
 // easy: ready in 30 min or less (not counting marinating or chilling) with 8 ingredients or fewer
 const isEasy = (r) => { const t = ((r.en && r.en.time) || r.time).split("+")[0]; return !/\bh\b|hour/.test(t) && (parseInt(t, 10) || 99) <= 30 && r.ing.length <= 8; };
 const CATS = ["All", "Favourites", "Easy", "Main", "Soup & Dal", "Salad", "Snack", "Sweet", "Drink", "Side & Sauce"];
-const MUSLIM = ["Turkish", "Lebanese", "Arab", "Moroccan", "Persian", "Malaysian", "Indonesian", "Egyptian"];
+const MUSLIM = ["Turkish", "Lebanese", "Arab", "Moroccan", "Persian", "Malaysian", "Indonesian", "Egyptian", "Uzbek"];
 const EURAM = ["English", "Italian", "Spanish", "Greek", "Nordic", "American", "Mexican"];
-const ASIA = ["Chinese", "Thai", "Japanese"];
+const ASIA = ["Chinese", "Thai", "Japanese", "Korean"];
 const REGION = (r) => (MUSLIM.includes(r.origin) ? "Middle East" : EURAM.includes(r.origin) ? "Europe & Americas" : ASIA.includes(r.origin) ? "East Asian" : r.origin);
 const REGIONS = ["Any cuisine", "Bangladeshi", "Pakistani", "Afghan", "Middle East", "Europe & Americas", "East Asian"];
 const REGION_BN = { "Any cuisine": "সব দেশের", "Bangladeshi": "বাংলাদেশি", "Pakistani": "পাকিস্তানি", "Afghan": "আফগান", "Middle East": "মধ্যপ্রাচ্য ও মুসলিম দেশ", "Europe & Americas": "ইউরোপ ও আমেরিকা", "East Asian": "পূর্ব এশিয়া" };

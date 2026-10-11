@@ -140,6 +140,8 @@ const ART = (() => {
     if (k === "bowl") return bowl(c, it || [], l == null ? 2 : l);
     if (k === "plate") return PLATE + onPlate(c);
     if (k === "pan") return pan(c, (() => { let q = 0, o = ""; (it || []).forEach(([t, cc, n]) => { for (let j = 0; j < n; j++) { o += item(t, cc, POSP[q % POSP.length].map((v, ix) => ix ? v - 6 : v), q); q++; } }); return o; })());
+    if (k === "pot") { const PP = [[44, 52], [60, 45], [76, 52], [52, 57], [68, 57], [60, 52]]; let q = 0, o = ""; (it || []).forEach(([t, cc, n]) => { for (let j = 0; j < n; j++) { o += item(t, cc, PP[q % PP.length], q); q++; } }); return pot(c, o); }
+    if (k === "skewer") return skewer(c);
     if (k === "glass") return glass(c);
     if (k === "cup") return cup(c, LEAF(88, 44, -20));
     if (k === "fish") return fish(c, it);
