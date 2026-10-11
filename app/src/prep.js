@@ -5,7 +5,7 @@ const prepOn = () => prepCfg().cook < 7 && !!dietCalc().target;
 
 // How well dishes keep. Fish and prawns: eat within 2 days. NO_FREEZE: fine for 3 days in the fridge, not frozen.
 const NO_BATCH = new Set(["larb", "fishchips", "jacket", "burrito", "friedrice", "stirfry", "tomatoegg", "paneer", "gambas", "tomyum", "paella", "roll", "tunawrap", "eggfriedrice", "noodles", "katsu", "oyakodon", "salmondon", "bibimbap", "miso"]);
-const FISHY = new Set(["fish", "vapa", "lahori", "ruijhol", "patori", "salmon", "malai", "lau", "tawafish", "chingribhuna", "ilish", "salmondon"]);
+const FISHY = new Set(["fish", "vapa", "lahori", "ruijhol", "patori", "salmon", "malai", "lau", "tawafish", "chingribhuna", "ilish", "salmondon", "pabda", "tilapia", "koi", "shing", "mola", "chingrikumra", "rupchanda", "doimach", "murighonto", "koralsteam"]);
 const NO_FREEZE = new Set(["dimbhuna", "tortilla", "pasta", "khichuri", "mujaddara", "shepherd", "fajita", "shawarma", "nasigoreng", "kabuli", "kabsa"]);
 const keepsFor = (r, span) => POOL.main(r) && !NO_BATCH.has(r.id) && !(FISHY.has(r.id) && span > 2) && !(NO_FREEZE.has(r.id) && span > 3);
 

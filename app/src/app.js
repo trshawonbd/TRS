@@ -97,7 +97,8 @@ const ICON = {
 const TYPE_LABEL = BNL ? BN.TYPE : { "Main": "Mains", "Soup & Dal": "Soups & dal", "Salad": "Salads", "Snack": "Snacks", "Sweet": "Sweets", "Drink": "Drinks", "Side & Sauce": "Sides & sauces" };
 // easy: ready in 30 min or less (not counting marinating or chilling) with 8 ingredients or fewer
 const isEasy = (r) => { const t = ((r.en && r.en.time) || r.time).split("+")[0]; return !/\bh\b|hour/.test(t) && (parseInt(t, 10) || 99) <= 30 && r.ing.length <= 8; };
-const CATS = ["All", "Favourites", "Easy", "Main", "Soup & Dal", "Salad", "Snack", "Sweet", "Drink", "Side & Sauce"];
+const isFish = (r) => /\b(fish|prawns?|salmon|tuna|ilish|hilsa|pomfret|tilapia|pabda|shing|magur|mola|koral|gambas|chingri|koi|macher|maach)\b/i.test((r.en && r.en.name) || r.name);
+const CATS = ["All", "Favourites", "Easy", "Fish", "Main", "Soup & Dal", "Salad", "Snack", "Sweet", "Drink", "Side & Sauce"];
 const MUSLIM = ["Turkish", "Lebanese", "Arab", "Moroccan", "Persian", "Malaysian", "Indonesian", "Egyptian", "Uzbek"];
 const EURAM = ["English", "Italian", "Spanish", "Greek", "Nordic", "American", "Mexican"];
 const ASIA = ["Chinese", "Thai", "Japanese", "Korean"];
@@ -386,11 +387,11 @@ function bindCommon(root) {
 
 /* ---------- recipes ---------- */
 function renderRecipes() {
-  $("cats").innerHTML = CATS.map((c) => `<button class="chip" data-c="${esc(c)}" aria-pressed="${c === cat}">${c === "All" ? tr("All", "সব") : c === "Favourites" ? tr("♥ Favourites", "♥ পছন্দ") : c === "Easy" ? tr("⚡ Easy", "⚡ সহজ") : TYPE_LABEL[c]}</button>`).join("");
+  $("cats").innerHTML = CATS.map((c) => `<button class="chip" data-c="${esc(c)}" aria-pressed="${c === cat}">${c === "All" ? tr("All", "সব") : c === "Favourites" ? tr("♥ Favourites", "♥ পছন্দ") : c === "Easy" ? tr("⚡ Easy", "⚡ সহজ") : c === "Fish" ? tr("🐟 Fish", "🐟 মাছ") : TYPE_LABEL[c]}</button>`).join("");
   $("cats").querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => { cat = b.dataset.c; renderRecipes(); }));
   const q = query.trim().toLowerCase(), favs = FAV_IDS();
   const shown = RECIPES.filter((r) =>
-    (cat === "All" ? true : cat === "Favourites" ? favs.has(r.id) : cat === "Easy" ? isEasy(r) : r.type === cat) &&
+    (cat === "All" ? true : cat === "Favourites" ? favs.has(r.id) : cat === "Easy" ? isEasy(r) : cat === "Fish" ? isFish(r) : r.type === cat) &&
     (region === "Any cuisine" || REGION(r) === region) &&
     (tool === "all" || (r.how && r.how[tool])) &&
     (!fitOnly || !dietCalc().perMeal || r.kcal <= dietCalc().perMeal) &&
