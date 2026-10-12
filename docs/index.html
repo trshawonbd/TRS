@@ -1997,6 +1997,34 @@ function openHomeEdit() {
   $("bs-card").querySelectorAll("[data-k]").forEach((c) => (c.onchange = () => { setHomeHide({ [c.dataset.k]: !c.checked }); renderHome(); }));
   $("he-ok").onclick = closeSheet;
 }
+/* start fresh: wipe chosen data on this phone and, in a family, my own rows */
+function openReset() {
+  const fam = inFamily();
+  const opts = [["diet", tr("My diet, weight log and meal plans", "আমার ডায়েট, ওজনের খাতা আর খাবারের প্ল্যান"), tr("On this phone", "এই ফোনে")],
+    ["phone", tr("Cooking log, favourites and screen settings", "রান্নার খাতা, পছন্দ আর পাতার সেটিং"), tr("On this phone", "এই ফোনে")]];
+  if (fam) opts.push(["cloud", tr("My cooked dishes and favourites in the family", "পরিবারে আমার রান্নার খাতা আর পছন্দ"), tr("Only yours; the rest of the family keeps theirs", "শুধু আপনার; পরিবারের অন্যদের তথ্য থাকবে")]);
+  openSheet(`<h3>${tr("Reset my data", "আমার তথ্য মুছুন")}</h3>
+    <p class="small muted">${tr("Choose what to delete. Language, theme and your account stay. This can't be undone.", "কী মুছবেন বেছে নিন। ভাষা, থিম আর অ্যাকাউন্ট থাকবে। মুছলে আর ফেরানো যাবে না।")}</p>
+    <div class="checks">${opts.map(([k, l, d]) => `<label><input type="checkbox" data-k="${k}" checked> <span>${l}<br><small class="muted">${d}</small></span></label>`).join("")}</div>
+    <button class="btn block" id="rs-go" style="background:var(--chili);color:#fff">${tr("Delete selected", "বেছে নেওয়াগুলো মুছুন")}</button>
+    <button class="btn ghost block" id="rs-no">${tr("Cancel", "বাতিল")}</button>`);
+  $("rs-no").onclick = closeSheet;
+  const go = $("rs-go");
+  go.onclick = async () => {
+    const pick = new Set([...$("bs-card").querySelectorAll("[data-k]:checked")].map((c) => c.dataset.k));
+    if (!pick.size) return closeSheet();
+    if (!go.dataset.sure) { go.dataset.sure = "1"; go.textContent = tr("Tap again to delete", "মুছতে আবার চাপুন"); return; }
+    go.disabled = true;
+    const drop = (test) => { try { Object.keys(localStorage).filter(test).forEach((k) => localStorage.removeItem(k)); } catch (e) {} };
+    if (pick.has("diet")) drop((k) => ["diet", "weights", "planSeg"].includes(k) || k.startsWith("plan-") || k.startsWith("week-seed-"));
+    if (pick.has("phone")) drop((k) => ["cooked", "favs", "homeHide", "tab", "ovenType", "airSize"].includes(k) || k.startsWith("ing-"));
+    if (pick.has("cloud") && fam) {
+      await Promise.all([sb.from("cooked_log").delete().match({ family_id: S.family.id, cooked_by: S.user.id }), sb.from("favorites").delete().match({ family_id: S.family.id, user_id: S.user.id })]);
+    }
+    toast(tr("Deleted. Starting fresh…", "মুছে ফেলা হয়েছে। নতুন করে শুরু…"));
+    setTimeout(() => location.reload(), 700);
+  };
+}
 /* one compact card: target, streak, recipes tried */
 function todayStatsHTML() {
   const c = dietCalc(), s = journeyStats();
@@ -2480,7 +2508,8 @@ async function renderFamily() {
   const health = [rowlink("diet", ICON.scale, tr("My diet", "আমার ডায়েট"), dc.target ? tr(`${fmtBig(dc.target)} kcal · ${dc.meals} meals${diet().fast !== "none" ? " · " + diet().fast : ""}`, `${fmtBig(dc.target)} ক্যালরি · ${N(dc.meals)} বেলা${diet().fast !== "none" ? " · " + N(diet().fast) : ""}`) : tr("Calories, BMI, goal weight, fasting", "ক্যালরি, BMI, লক্ষ্য ওজন, ফাস্টিং")), rowlink("journey", ICON.trophy, tr("Our kitchen journey", "আমাদের রান্নার খাতা"), tr(`${js.tried.size} recipes tried · ${nb} badges`, `${N(js.tried.size)}টি রেসিপি · ${N(nb)}টি ব্যাজ`))];
   const common = [langRow, themeRow,
     rowlink("kitchen", ICON.oven, tr("My kitchen", "আমার রান্নাঘর"), tr("Oven and air fryer settings", "ওভেন আর এয়ার ফ্রায়ার")),
-    rowlink("tips", ICON.bulb, tr("Healthy swaps", "স্বাস্থ্যকর বদল"), tr("Lighter versions of everyday habits", "রোজকার অভ্যাসের হালকা বিকল্প"))];
+    rowlink("tips", ICON.bulb, tr("Healthy swaps", "স্বাস্থ্যকর বদল"), tr("Lighter versions of everyday habits", "রোজকার অভ্যাসের হালকা বিকল্প")),
+    `<button class="rowlink" id="reset-row"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></span><span>${tr("Reset my data", "আমার তথ্য মুছুন")}<small>${tr("Start fresh for testing", "নতুন করে শুরু করুন")}</small></span><span class="chev">${ICON.chev}</span></button>`];
   if (!S.user) {
     box.innerHTML = `<div class="card"><h2 style="font-size:1.4rem">${tr("Cook together", "একসাথে রান্না")}</h2><p class="muted">${tr("Share favourites, today's dish and one shopping list with your partner, and get notified when they need something.", "সঙ্গীর সাথে পছন্দের রেসিপি, আজকের রান্না আর বাজারের তালিকা শেয়ার করুন। কিছু লাগলে নোটিফিকেশন পাবেন।")}</p><button class="btn primary block" id="go-login2">${tr("Sign in or create account", "লগ ইন বা অ্যাকাউন্ট খুলুন")}</button></div>${rows(common)}`;
     box.insertAdjacentHTML("afterbegin", rows(health));
@@ -2518,6 +2547,7 @@ async function renderFamily() {
     $("name-form").onsubmit = async (e) => { e.preventDefault(); const n = $("my-name").value.trim(); if (!n) return; await sb.from("profiles").update({ name: n }).eq("id", S.user.id); await loadMembers(); refreshAll(); toast(tr("Name saved", "নাম সেভ হয়েছে")); };
     $("logout").onclick = async () => { await sb.auth.signOut(); location.reload(); };
   }
+  $("reset-row").onclick = openReset;
   box.insertAdjacentHTML("beforeend", `<p class="legal"><a href="privacy.html">${tr("Privacy Policy", "প্রাইভেসি পলিসি")}</a> · <a href="terms.html">${tr("Terms of Use", "ব্যবহারের শর্ত")}</a></p>`);
   bindCommon(box);
 }
