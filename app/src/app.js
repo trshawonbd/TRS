@@ -657,7 +657,8 @@ async function shareCard(r, items, heading) {
 let planDay = (DAYS.find((d) => d.js === new Date().getDay()) || DAYS[0]).k;
 function openSub(kind) {
   if (["diet", "prep", "journey", "plan"].includes(kind) && needLogin(kind === "journey" ? tr("Your cooking log and badges are saved to your account.", "রান্নার খাতা আর ব্যাজ আপনার অ্যাকাউন্টে জমা থাকে।") : tr("Your diet, calorie target and meal plans are saved to your account.", "আপনার ডায়েট, ক্যালরির লক্ষ্য আর খাবারের প্ল্যান অ্যাকাউন্টে জমা থাকে।"))) return;
-  if (kind === "prep") { planSeg = "week"; store.set("planSeg", "week"); showTab("plan"); renderPlanTab(); return; }
+  // from a tab: jump to Plan → This week. From inside a page (My diet): open the week plan on top, no tab switch
+  if (kind === "prep" && !pageKind) { planSeg = "week"; store.set("planSeg", "week"); showTab("plan"); renderPlanTab(); return; }
   const titles = { plan: tr("Diet plan", "ডায়েট প্ল্যান"), kitchen: tr("My kitchen", "আমার রান্নাঘর"), activity: tr("Activity", "কে কী করেছে"), tips: tr("Healthy swaps", "স্বাস্থ্যকর বদল"), journey: tr("Our kitchen journey", "আমাদের রান্নার খাতা"), diet: tr("My diet", "আমার ডায়েট"), prep: tr("Week plan", "সপ্তাহের প্ল্যান") };
   openPageShell(kind, titles[kind]);
   $("page-act").innerHTML = "";
