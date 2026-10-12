@@ -574,6 +574,7 @@ function renderPage() {
       ${timesCooked(r.id) || (S.pop.get(r.id) || 0) > 1 ? `<p class="small muted num">${[timesCooked(r.id) ? tr(`🍳 You've cooked this ${timesCooked(r.id)} time${timesCooked(r.id) > 1 ? "s" : ""}`, `🍳 আপনারা ${N(timesCooked(r.id))} বার রেঁধেছেন`) : "", (S.pop.get(r.id) || 0) > 1 ? tr(`${S.pop.get(r.id)} families cooked it`, `${N(S.pop.get(r.id))}টি পরিবার রেঁধেছে`) : ""].filter(Boolean).join(" · ")}</p>` : ""}</div>
     <div class="stats num"><div><b>${N(r.kcal)}</b><span>${KCAL}</span></div><div><b>${N(r.p)} ${tr("g", "গ্রাম")}</b><span>${tr("protein", "প্রোটিন")}</span></div><div><b>${shortTime(r)}</b><span>${extraTime}</span></div></div>
     ${mealFitLine(r)}
+    ${r.meal ? `<span class="lighter">🥗 ${tr("A full meal on its own", "একাই পুরো এক বেলার খাবার")}</span>` : ""}
     ${r.reg > r.kcal ? `<span class="lighter num">${tr(`${r.reg - r.kcal} kcal lighter than usual`, `সাধারণের চেয়ে ${N(r.reg - r.kcal)} ক্যালরি কম`)}</span>` : ""}
     <div class="seg" role="tablist">${[["ing", tr("Ingredients", "উপকরণ")], ["steps", tr("Method", "রান্নার ধাপ")], ["tips", tr("Tips", "টিপস")]].map(([k, l]) => `<button role="tab" data-p="${k}" aria-selected="${k === part}">${l}</button>`).join("")}</div>
     ${body}</div>`;

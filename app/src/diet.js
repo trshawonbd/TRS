@@ -234,7 +234,7 @@ const ADDONS = {
 const SLOT_SETS = { 1: ["main", "snack"], 2: ["main", "main"], 3: ["main", "snack", "main"], 4: ["main", "snack", "main", "light"], 5: ["main", "snack", "main", "snack", "light"] };
 const SLOT_W = { main: 1, snack: 0.45, light: 0.3 };
 const POOL = {
-  main: (r) => r.type === "Main" || r.type === "Soup & Dal",
+  main: (r) => r.type === "Main" || r.type === "Soup & Dal" || !!r.meal, // meal-size salads count as a main
   snack: (r) => r.type === "Snack" || r.type === "Salad" || r.type === "Sweet",
   light: (r) => r.type === "Salad" || r.type === "Drink"
 };
