@@ -92,9 +92,11 @@ async function addSessionToShop(s) {
     window.open("https://wa.me/?text=" + encodeURIComponent(tr(`Shopping for ${dayLabel(s.date)}:`, `${dayLabel(s.date)}-এর বাজার:`) + "\n" + items.map((x) => "• " + x).join("\n")), "_blank");
     return;
   }
-  const { error } = await sb.from("shopping_items").insert(items.map((t) => ({ family_id: S.family.id, text: t.slice(0, 200), added_by: S.user.id })));
+  const fresh = notOnList(items);
+  if (!fresh.length) return toast(tr("All of these are already on the list", "সবগুলো আগে থেকেই তালিকায় আছে"));
+  const { error } = await sb.from("shopping_items").insert(fresh.map((t) => ({ family_id: S.family.id, text: t.slice(0, 200), added_by: S.user.id })));
   if (error) return toast(tr("Couldn't add, try again", "যোগ হয়নি, আবার চেষ্টা করুন"));
-  await loadShop(); refreshAll(); toast(tr(`${items.length} items added to Shopping`, `বাজারের তালিকায় ${N(items.length)}টি জিনিস যোগ হয়েছে`));
+  await loadShop(); refreshAll(); toast(tr(`${fresh.length} items added to Shopping`, `বাজারের তালিকায় ${N(fresh.length)}টি জিনিস যোগ হয়েছে`));
 }
 
 /* the week page */

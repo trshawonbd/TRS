@@ -208,6 +208,16 @@ async function cycleIng(rid, i) {
   const q = { family_id: S.family.id, day: today(), recipe_id: rid, idx: i };
   if (next) await sb.from("ingredient_status").upsert({ ...q, status: next, updated_by: S.user.id, updated_at: new Date().toISOString() });
   else await sb.from("ingredient_status").delete().match(q);
+  // "need" puts it on the shared shopping list, so the rest of the family sees it there
+  const line = ingLine(R[rid], i);
+  if (next === "need" && notOnList([line]).length) {
+    await sb.from("shopping_items").insert({ family_id: S.family.id, text: line.slice(0, 200), recipe_id: rid, added_by: S.user.id });
+    logActivity(tr(`needs ${line} for ${R[rid].name}`, `${R[rid].name}-এর জন্য লাগবে: ${line}`));
+    await loadShop(); refreshAll(); toast(tr("Added to Shopping", "বাজারের তালিকায় যোগ হয়েছে"));
+  } else if (cur0 === "need" && !next) {
+    const it = S.shop.find((x) => !x.bought && x.recipe_id === rid && normItem(x.text) === normItem(line));
+    if (it) { await sb.from("shopping_items").delete().eq("id", it.id); await loadShop(); refreshAll(); }
+  }
 }
 async function setPlan(rid) {
   const msg = tr(`Today's dish: ${R[rid].name}`, `আজকের রান্না: ${R[rid].name}`);
@@ -219,7 +229,7 @@ async function setPlan(rid) {
   toast(msg);
   logActivity(tr(`chose today's dish: ${R[rid].name}`, `আজকের রান্না ঠিক করেছেন: ${R[rid].name}`));
   const others = S.members.filter((m) => m.user_id !== S.user.id).map((m) => m.user_id);
-  if (others.length) sendNotify(others, tr("Today's dish is decided", "আজকের রান্না ঠিক হয়েছে"), tr(`${myName()} picked ${R[rid].name}`, `${myName()} বেছেছেন ${R[rid].name}`), rid);
+  if (others.length) sendNotify(others, bi("Today's dish is decided", "আজকের রান্না ঠিক হয়েছে"), bi(`${myName()} picked ${nameIn(rid, "en")}`, `${myName()} বেছেছেন ${nameIn(rid, "bn")}`), rid);
 }
 
 /* ---------- tabs ---------- */
@@ -407,7 +417,7 @@ function renderHome() {
   if (!hero.includes('class="btn primary" data-tab-go="spin"')) hero += spinRow;
   const side = S.user ? (hide.fast ? "" : fastCard()) + (hide.stats ? "" : todayStatsHTML()) : signInCard();
   box.innerHTML = `
-    ${unread.length && !hide.msgs ? `<button class="msg-strip" data-tab-go="shop"><span class="dot"></span><span><b>${esc(unread[0].title)}</b><br><span class="small muted">${esc(nameOf(unread[0].from_user))} · ${ago(unread[0].created_at)}${unread.length > 1 ? tr(` · +${unread.length - 1} more`, ` · আরও ${N(unread.length - 1)}টি`) : ""}</span></span></button>` : ""}
+    ${unread.length && !hide.msgs ? `<button class="msg-strip" data-tab-go="shop"><span class="dot"></span><span><b>${esc(msgOf(unread[0]).title)}</b><br><span class="small muted">${esc(nameOf(unread[0].from_user))} · ${ago(unread[0].created_at)}${unread.length > 1 ? tr(` · +${unread.length - 1} more`, ` · আরও ${N(unread.length - 1)}টি`) : ""}</span></span></button>` : ""}
     ${hero ? `<div class="home-main">${hero}</div>` : ""}
     ${side ? `<div class="home-side">${side}</div>` : ""}
     ${!hero && !side ? `<p class="empty">${tr("Your Today screen is clear.", "আজকের পাতা একদম ফাঁকা।")}</p>` : ""}
@@ -612,8 +622,9 @@ function openNotify(r) {
     if (!items.length) return toast(tr("Pick at least one item", "অন্তত একটা জিনিস বাছুন"));
     if (!to.length) return toast(tr("Choose who to notify", "কাকে জানাবেন বাছুন"));
     send.disabled = true;
-    await sb.from("shopping_items").insert(items.map((t) => ({ family_id: S.family.id, text: t.slice(0, 200), recipe_id: r.id, added_by: S.user.id, assigned_to: to[0] })));
-    const res = await sendNotify(to, tr(`Needed for ${r.name}`, `${r.name}-এর জন্য লাগবে`), items.join(", "), r.id);
+    const fresh = notOnList(items);
+    if (fresh.length) await sb.from("shopping_items").insert(fresh.map((t) => ({ family_id: S.family.id, text: t.slice(0, 200), recipe_id: r.id, added_by: S.user.id, assigned_to: to[0] })));
+    const res = await sendNotify(to, bi(`Needed for ${nameIn(r.id, "en")}`, `${nameIn(r.id, "bn")}-এর জন্য লাগবে`), items.join(", "), r.id);
     logActivity(tr(`asked for ${items.length} item${items.length > 1 ? "s" : ""} for ${r.name}`, `${r.name}-এর জন্য ${N(items.length)}টি জিনিস চেয়েছেন`));
     closeSheet(); await loadShop(); refreshAll();
     if (res) toast(res.sent ? tr("Sent. They'll get a notification.", "পাঠানো হয়েছে, ফোনে নোটিফিকেশন যাবে।") : tr("Sent. Their phone has notifications off, they'll see it in the app.", "পাঠানো হয়েছে। ওনার ফোনে নোটিফিকেশন বন্ধ, অ্যাপ খুললে দেখবেন।"));
@@ -781,7 +792,7 @@ function renderShop() {
     </div>
     <div class="card" style="gap:0">
       <div class="section-h" style="margin-bottom:6px"><h2>${tr("Messages", "মেসেজ")}</h2>${unread.length ? `<button class="link" id="read-all">${tr("Mark all read", "সব পড়া হয়েছে")}</button>` : ""}</div>
-      ${S.inbox.slice(0, 12).map((n) => `<div class="msg${n.read_at ? "" : " new"}"><b>${esc(n.title)}</b><span class="small">${esc(n.body)}</span><small>${esc(nameOf(n.from_user))} · ${ago(n.created_at)}${n.recipe_id && R[n.recipe_id] ? ` · <button class="link" data-r="${n.recipe_id}" style="min-height:0">${tr("Open recipe", "রেসিপি খুলুন")}</button>` : ""}</small></div>`).join("") || `<p class="muted small" style="padding:8px 0">${tr("No messages yet.", "এখনো কোনো মেসেজ নেই।")}</p>`}
+      ${S.inbox.slice(0, 12).map((n) => `<div class="msg${n.read_at ? "" : " new"}"><b>${esc(msgOf(n).title)}</b><span class="small">${esc(msgOf(n).body)}</span><small>${esc(nameOf(n.from_user))} · ${ago(n.created_at)}${n.recipe_id && R[n.recipe_id] ? ` · <button class="link" data-r="${n.recipe_id}" style="min-height:0">${tr("Open recipe", "রেসিপি খুলুন")}</button>` : ""}</small></div>`).join("") || `<p class="muted small" style="padding:8px 0">${tr("No messages yet.", "এখনো কোনো মেসেজ নেই।")}</p>`}
     </div>`;
   bindCommon(box);
   box.querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => { const i = $("shop-text"), v = i.value.trim(); i.value = v ? v + ", " + b.dataset.q : b.dataset.q; i.focus(); }));
@@ -790,7 +801,8 @@ function renderShop() {
     e.preventDefault();
     const raw = $("shop-text").value.trim();
     if (!raw) return toast(tr("Type what you need", "কী লাগবে লিখুন"));
-    const items = raw.split(/[,،\n]+/).map((s) => s.trim()).filter(Boolean).slice(0, 20);
+    const all = raw.split(/[,،\n]+/).map((s) => s.trim()).filter(Boolean).slice(0, 20), items = notOnList(all);
+    if (!items.length) { $("shop-text").value = ""; return toast(tr("Already on the list", "আগে থেকেই তালিকায় আছে")); }
     const to = others.map((o) => o.user_id).filter((u) => !shopSkip.has(u));
     $("shop-text").value = "";
     const { error } = await sb.from("shopping_items").insert(items.map((t) => ({ family_id: S.family.id, text: t.slice(0, 200), added_by: S.user.id, assigned_to: to[0] || null })));
@@ -798,8 +810,8 @@ function renderShop() {
     await loadShop(); refreshAll();
     logActivity(tr(`added to the list: ${items.join(", ")}`, `তালিকায় যোগ করেছেন: ${items.join(", ")}`));
     if (to.length) {
-      const title = items.length === 1 ? tr(`Please buy: ${items[0]}`, `কিনে আনবেন: ${items[0]}`) : tr(`Please buy ${items.length} things`, `${N(items.length)}টি জিনিস কিনে আনবেন`);
-      const res = await sendNotify(to, title, tr(`${myName()} added ${items.join(", ")}`, `${myName()} যোগ করেছেন: ${items.join(", ")}`), null);
+      const title = items.length === 1 ? bi(`Please buy: ${items[0]}`, `কিনে আনবেন: ${items[0]}`) : bi(`Please buy ${items.length} things`, `${bnDigits(items.length)}টি জিনিস কিনে আনবেন`);
+      const res = await sendNotify(to, title, bi(`${myName()} added ${items.join(", ")}`, `${myName()} যোগ করেছেন: ${items.join(", ")}`), null);
       if (res) toast(res.sent ? tr("Added and notified", "যোগ হয়েছে, জানানো হয়েছে") : tr("Added. They'll see it when they open the app.", "যোগ হয়েছে। অ্যাপ খুললে দেখতে পাবেন।"));
     } else toast(tr("Added to the list", "তালিকায় যোগ হয়েছে"));
   };
@@ -807,13 +819,13 @@ function renderShop() {
     const it = S.shop.find((x) => x.id === b.dataset.buy); if (!it) return;
     it.bought = !it.bought; it.bought_by = it.bought ? S.user.id : null; refreshAll();
     await sb.from("shopping_items").update({ bought: it.bought, bought_by: it.bought_by }).eq("id", it.id);
-    if (it.bought) { logActivity(tr(`bought ${it.text}`, `কিনেছেন: ${it.text}`)); if (it.added_by !== S.user.id) sendNotify([it.added_by], tr("Bought", "কেনা হয়েছে"), tr(`${myName()} bought ${it.text}`, `${myName()} কিনেছেন: ${it.text}`), it.recipe_id); }
+    if (it.bought) { logActivity(tr(`bought ${it.text}`, `কিনেছেন: ${it.text}`)); if (it.added_by !== S.user.id) sendNotify([it.added_by], bi("Bought", "কেনা হয়েছে"), bi(`${myName()} bought ${it.text}`, `${myName()} কিনেছেন: ${it.text}`), it.recipe_id); }
   }));
   box.querySelectorAll("[data-ring]").forEach((b) => (b.onclick = async () => {
     const it = S.shop.find((x) => x.id === b.dataset.ring); if (!it) return;
     const to = it.assigned_to && it.assigned_to !== S.user.id ? [it.assigned_to] : others.map((o) => o.user_id);
     b.disabled = true;
-    const res = await sendNotify(to, tr(`Reminder: ${it.text}`, `মনে আছে? ${it.text}`), tr(`${myName()} reminded you this still needs buying.`, `${myName()} মনে করিয়ে দিলেন, এটা এখনো কেনা হয়নি।`), it.recipe_id);
+    const res = await sendNotify(to, bi(`Reminder: ${it.text}`, `মনে আছে? ${it.text}`), bi(`${myName()} reminded you this still needs buying.`, `${myName()} মনে করিয়ে দিলেন, এটা এখনো কেনা হয়নি।`), it.recipe_id);
     b.disabled = false;
     if (res) toast(tr(`Reminded ${to.map(nameOf).join(", ")}`, `${to.map(nameOf).join(", ")}-কে মনে করানো হয়েছে`));
   }));
@@ -899,7 +911,7 @@ function confirmFamily(title, text, okLabel, run) {
   $("cf-ok").onclick = async () => { $("cf-ok").disabled = true; await run(); closeSheet(); };
 }
 async function testPush() {
-  const r = await sb.functions.invoke("notify", { body: { family_id: S.family.id, to: S.members.map((m) => m.user_id), title: tr("Test", "পরীক্ষা"), body: tr("Notifications are working", "নোটিফিকেশন কাজ করছে") } });
+  const r = await sb.functions.invoke("notify", { body: { family_id: S.family.id, to: S.members.map((m) => m.user_id), title: tr("Test", "পরীক্ষা"), body: tr("Notifications are working", "নোটিফিকেশন কাজ করছে"), i18n: { en: { title: "Test", body: "Notifications are working" }, bn: { title: "পরীক্ষা", body: "নোটিফিকেশন কাজ করছে" } } } });
   toast(r.error ? tr("Couldn't send", "পাঠানো যায়নি") : tr("Test sent to the rest of the family", "পরিবারের বাকিদের কাছে পরীক্ষা পাঠানো হয়েছে"));
 }
 
@@ -980,13 +992,23 @@ function subscribe() {
   const reload = { favorites: loadFavs, cook_plans: loadPlan, ingredient_status: loadIng, shopping_items: loadShop, activity: loadActivity, family_members: loadMembers, dish_photos: loadPhotos, cooked_log: loadCooked };
   let ch = sb.channel("fam-" + S.family.id);
   Object.keys(reload).forEach((t) => { ch = ch.on("postgres_changes", { event: "*", schema: "public", table: t, filter: f }, async () => { await reload[t](); refreshAll(); }); });
-  ch = ch.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `to_user=eq.${S.user.id}` }, async (p) => { await loadInbox(); refreshAll(); if (p.eventType === "INSERT") toast(p.new.title); });
+  ch = ch.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `to_user=eq.${S.user.id}` }, async (p) => { await loadInbox(); refreshAll(); if (p.eventType === "INSERT") toast(msgOf(p.new).title); });
   S.channel = ch.subscribe();
 }
 async function logActivity(text) { if (inFamily()) await sb.from("activity").insert({ family_id: S.family.id, user_id: S.user.id, text: text.slice(0, 300) }); }
+/* messages are written in both languages; each person reads them in their own */
+const bi = (en, bn) => ({ en, bn });
+const bnDigits = (x) => String(x).replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[d]);
+const nameIn = (rid, lang) => { const r = R[rid]; if (!r) return ""; return lang === "bn" ? (BN.R[rid] && BN.R[rid].name) || r.name : (r.en && r.en.name) || r.name; };
+const msgOf = (n) => (n.i18n && n.i18n[LANG]) || { title: n.title, body: n.body };
+/* skip things already waiting on the list (same text, not bought yet) */
+const normItem = (t) => String(t).toLowerCase().replace(/\s+/g, " ").trim();
+function notOnList(items) { const have = new Set(S.shop.filter((x) => !x.bought).map((x) => normItem(x.text))); const seen = new Set(); return items.filter((t) => { const k = normItem(t); if (have.has(k) || seen.has(k)) return false; seen.add(k); return true; }); }
 async function sendNotify(to, title, body, recipe_id) {
   if (!inFamily()) return { stored: 0 };
-  const { data, error } = await sb.functions.invoke("notify", { body: { family_id: S.family.id, to, title, body, recipe_id } });
+  const T = typeof title === "string" ? bi(title, title) : title, B = typeof body === "string" ? bi(body, body) : body;
+  const i18n = { en: { title: T.en, body: B.en }, bn: { title: T.bn, body: B.bn } };
+  const { data, error } = await sb.functions.invoke("notify", { body: { family_id: S.family.id, to, title: T[LANG], body: B[LANG], recipe_id, i18n } });
   if (error) { toast(tr("Couldn't send, try again", "পাঠানো যায়নি, আবার চেষ্টা করুন")); return null; }
   return data;
 }
@@ -1165,6 +1187,7 @@ async function start() {
     S.user = session?.user || null;
     if (!S.user) { S.family = null; if (invite?.name) showAuth(true); refreshAll(); return; }
     showAuth(false);
+    sb.from("profiles").update({ lang: LANG }).eq("id", S.user.id).then(() => {}, () => {});
     const { data: mem } = await sb.from("family_members").select("family_id, families(*)").eq("user_id", S.user.id);
     const pending = store.get("pendingJoin");
     if (pending) {
