@@ -606,6 +606,12 @@ details.wday summary::-webkit-details-marker { display: none; }
 .ticks li::before { content: "✓"; color: var(--leaf); font-weight: 700; }
 .signin-card { gap: 12px; }
 .premium-card { background: var(--saffron-2); color: var(--ink); }
+
+.mem-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.mem-list li { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.mem-list li:first-child { border-top: 0; }
+.mem-list .av { width: 32px; height: 32px; }
+.mem-nm { min-width: 0; overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
@@ -2572,12 +2578,15 @@ async function renderFamily() {
     box.insertAdjacentHTML("beforeend", premiumCard());
   } else {
     const ps = await pushState();
+    const iAmHead = S.members.some((m) => m.user_id === S.user.id && m.role === "owner");
     const link = location.origin + location.pathname + "?join=" + S.family.code;
     const pushSub = ps === "on" ? tr("On for this phone", "এই ফোনে চালু") : ps === "denied" ? tr("Blocked in phone settings", "ফোনের সেটিংসে বন্ধ করা") : ps === "unsupported" ? (/iphone|ipad/i.test(navigator.userAgent) ? tr("Add to Home Screen first, then open from the icon", "আগে Home Screen-এ যোগ করে আইকন থেকে খুলুন") : tr("Not supported in this browser", "এই ব্রাউজারে চলে না")) : tr("Get a ping when your partner needs something", "সঙ্গীর কিছু লাগলে ফোনে জানবেন");
     box.innerHTML = `${rows(health)}${premiumCard()}
       <div class="card fam-head">
         <div class="members">${S.members.map((m) => `<span class="av" title="${esc(m.name)}">${initial(m.name)}</span>`).join("")}</div>
-        <div><h2 style="font-size:1.5rem">${esc(S.family.name)}</h2><p class="small muted">${S.members.map((m) => esc(m.user_id === S.user.id ? m.name + tr(" (you)", " (আপনি)") : m.name)).join(" · ")}</p></div>
+        <div><h2 style="font-size:1.5rem">${esc(S.family.name)}</h2><p class="small muted num">${tr(`${S.members.length} member${S.members.length > 1 ? "s" : ""}`, `${N(S.members.length)} জন সদস্য`)}</p></div>
+        <ul class="mem-list">${S.members.map((m) => { const me = m.user_id === S.user.id;
+          return `<li><span class="av">${initial(m.name)}</span><span class="mem-nm">${esc(m.name)}${me ? tr(" (you)", " (আপনি)") : ""}${m.role === "owner" ? ` <span class="tagc cook">${tr("Head", "প্রধান")}</span>` : ""}</span>${iAmHead && !me ? `<button class="btn ghost sm" data-rm="${m.user_id}">${tr("Remove", "সরান")}</button>` : ""}</li>`; }).join("")}</ul>
         <div class="note" style="display:grid;gap:8px"><span class="eyebrow">${tr("Invite code", "ইনভাইট কোড")}</span><span class="code">${esc(S.family.code)}</span>
           <div class="row2"><button class="btn primary" id="inv-share">${tr("Invite partner", "সঙ্গীকে ডাকুন")}</button><button class="btn ghost" id="inv-copy">${tr("Copy code", "কোড কপি")}</button></div></div>
       </div>
@@ -2588,6 +2597,7 @@ async function renderFamily() {
       ])}
       ${rows(common)}
       ${rows([`<form class="rowlink" id="name-form" style="grid-template-columns:36px 1fr auto"><span class="ic">${ICON.user}</span><input class="field" id="my-name" maxlength="40" value="${esc(myName())}" aria-label="${tr("Your name", "আপনার নাম")}" style="min-height:44px"><button class="link">${tr("Save", "সেভ")}</button></form>`,
+        `<button class="rowlink" id="leave-fam"><span class="ic">${ICON.people}</span><span style="color:var(--chili);font-weight:600">${tr("Leave this family", "এই পরিবার ছেড়ে দিন")}</span><span></span></button>`,
         `<button class="rowlink" id="logout"><span class="ic">${ICON.chev}</span><span style="color:var(--chili);font-weight:600">${tr("Log out", "লগ আউট")}</span><span></span></button>`])}`;
     $("inv-copy").onclick = () => navigator.clipboard?.writeText(S.family.code).then(() => toast(tr("Code copied", "কোড কপি হয়েছে")), () => toast(S.family.code));
     $("inv-share").onclick = async () => {
@@ -2597,11 +2607,28 @@ async function renderFamily() {
     };
     $("push-sw").onclick = () => (ps === "on" ? testPush() : enablePush());
     $("name-form").onsubmit = async (e) => { e.preventDefault(); const n = $("my-name").value.trim(); if (!n) return; await sb.from("profiles").update({ name: n }).eq("id", S.user.id); await loadMembers(); refreshAll(); toast(tr("Name saved", "নাম সেভ হয়েছে")); };
+    box.querySelectorAll("[data-rm]").forEach((b) => (b.onclick = () => confirmFamily(
+      tr(`Remove ${nameOf(b.dataset.rm)} from the family?`, `${nameOf(b.dataset.rm)}-কে পরিবার থেকে সরাবেন?`),
+      tr("They will no longer see the shopping list, plans or photos. They can join again only with the invite code.", "তিনি আর বাজারের তালিকা, প্ল্যান বা ছবি দেখতে পাবেন না। আবার যোগ দিতে ইনভাইট কোড লাগবে।"),
+      tr("Remove", "সরান"),
+      async () => { const { error } = await sb.rpc("remove_member", { fam: S.family.id, target: b.dataset.rm }); if (error) return toast(tr("Couldn't remove. Is the database update installed?", "সরানো যায়নি। ডেটাবেসের আপডেট চালু আছে তো?")); await loadMembers(); refreshAll(); toast(tr("Removed", "সরানো হয়েছে")); })));
+    $("leave-fam").onclick = () => confirmFamily(
+      tr("Leave this family?", "এই পরিবার ছেড়ে দেবেন?"),
+      iAmHead && S.members.length > 1 ? tr("You are the head. The member who joined first will become the new head.", "আপনি প্রধান। যিনি সবার আগে যোগ দিয়েছেন, তিনি নতুন প্রধান হবেন।") : tr("You can join again later with the invite code.", "পরে ইনভাইট কোড দিয়ে আবার যোগ দিতে পারবেন।"),
+      tr("Leave", "ছেড়ে দিন"),
+      async () => { const { error } = await sb.rpc("leave_family", { fam: S.family.id }); if (error) return toast(tr("Couldn't leave. Is the database update installed?", "ছাড়া যায়নি। ডেটাবেসের আপডেট চালু আছে তো?")); store.set("familyId", ""); location.reload(); });
     $("logout").onclick = async () => { await sb.auth.signOut(); location.reload(); };
   }
   $("reset-row").onclick = openReset;
   box.insertAdjacentHTML("beforeend", `<p class="legal"><a href="privacy.html">${tr("Privacy Policy", "প্রাইভেসি পলিসি")}</a> · <a href="terms.html">${tr("Terms of Use", "ব্যবহারের শর্ত")}</a></p>`);
   bindCommon(box);
+}
+function confirmFamily(title, text, okLabel, run) {
+  openSheet(`<h3>${title}</h3><p class="muted">${text}</p>
+    <button class="btn block" id="cf-ok" style="background:var(--chili);color:#fff">${okLabel}</button>
+    <button class="btn ghost block" id="cf-no">${tr("Cancel", "বাতিল")}</button>`);
+  $("cf-no").onclick = closeSheet;
+  $("cf-ok").onclick = async () => { $("cf-ok").disabled = true; await run(); closeSheet(); };
 }
 async function testPush() {
   const r = await sb.functions.invoke("notify", { body: { family_id: S.family.id, to: S.members.map((m) => m.user_id), title: tr("Test", "পরীক্ষা"), body: tr("Notifications are working", "নোটিফিকেশন কাজ করছে") } });

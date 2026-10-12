@@ -589,4 +589,10 @@ details.wday summary::-webkit-details-marker { display: none; }
 .ticks li::before { content: "✓"; color: var(--leaf); font-weight: 700; }
 .signin-card { gap: 12px; }
 .premium-card { background: var(--saffron-2); color: var(--ink); }
+
+.mem-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.mem-list li { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.mem-list li:first-child { border-top: 0; }
+.mem-list .av { width: 32px; height: 32px; }
+.mem-nm { min-width: 0; overflow-wrap: anywhere; }
 </style>
