@@ -26,7 +26,7 @@ function setTheme(t) {
   store.set("theme", t);
   if (t === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
   const dark = t === "dark" || (t === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", dark ? "#0F1511" : "#1F5C3D"));
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", dark ? "#11130B" : "#4D5A1E"));
 }
 setTheme(themeNow());
 const themePicker = () => `<span class="langsw" role="group" aria-label="Theme">${[["light", tr("Light", "দিন")], ["dark", tr("Dark", "রাত")], ["auto", tr("Auto", "অটো")]].map(([k, l]) => `<button type="button" data-theme-v="${k}" aria-pressed="${themeNow() === k}">${l}</button>`).join("")}</span>`;
