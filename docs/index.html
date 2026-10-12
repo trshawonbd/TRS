@@ -612,6 +612,35 @@ details.wday summary::-webkit-details-marker { display: none; }
 .mem-list li:first-child { border-top: 0; }
 .mem-list .av { width: 32px; height: 32px; }
 .mem-nm { min-width: 0; overflow-wrap: anywhere; }
+
+/* today's plan: dish cards, calorie meter and a big shuffle */
+.pl-meter { display: grid; gap: 6px; }
+.pl-bar { height: 8px; border-radius: 99px; background: var(--sunk); overflow: hidden; }
+.pl-bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--leaf), #8CC152); transition: width .5s ease; }
+.pmc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.pmc { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px; border-radius: 18px; background: var(--sunk); }
+.pmc-pic { width: 64px; height: 64px; border-radius: 14px; overflow: hidden; display: grid; place-items: center; padding: 0; }
+.pmc-pic svg { width: 100%; height: 100%; }
+.pmc-tx { display: grid; gap: 2px; min-width: 0; }
+.pmc-when { font-size: .8rem; color: var(--muted); }
+.pmc-when b { color: var(--leaf); }
+.pmc-name { font-weight: 700; text-align: left; line-height: 1.3; overflow-wrap: anywhere; }
+.pmc-tx small { color: var(--muted); font-size: .82rem; line-height: 1.35; }
+.pmc-side { display: grid; justify-items: end; gap: 6px; }
+.pmc-k { font-weight: 700; font-size: 1rem; display: grid; justify-items: end; line-height: 1.1; }
+.pmc-k small { font-weight: 500; font-size: .7rem; color: var(--muted); }
+.pmc-swap { width: 36px; height: 36px; border-radius: 50%; background: var(--surface); color: var(--leaf); font-size: 1.15rem; font-weight: 700; box-shadow: var(--shadow); }
+.pmc-swap.spin, .shuffle-btn.spin .sh-ic { animation: plSpin .4s ease; }
+.shuffle-btn { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: center; text-align: left; width: 100%; padding: 12px 16px; border-radius: 18px; background: var(--leaf); color: var(--on-leaf); }
+.shuffle-btn .sh-ic { width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,.18); display: grid; place-items: center; font-size: 1.4rem; }
+.shuffle-btn b { font-size: 1rem; display: block; }
+.shuffle-btn small { font-size: .82rem; opacity: .85; }
+.pmc.pop { animation: plPop .45s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
+@keyframes plSpin { to { transform: rotate(360deg); } }
+@keyframes plPop { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pmc.pop, .pmc-swap.spin, .shuffle-btn.spin .sh-ic { animation: none; } }
+@media (hover: hover) and (pointer: fine) { .shuffle-btn:hover .sh-ic { transform: rotate(-12deg); } .sh-ic { transition: transform .2s; } .pmc-swap:hover { background: var(--leaf-2); } }
+@media (max-width: 370px) { .pmc { grid-template-columns: 52px minmax(0, 1fr) auto; gap: 10px; } .pmc-pic { width: 52px; height: 52px; } }
 </style>
 </head>
 <body>
@@ -1384,7 +1413,7 @@ function sidesOnly(slot, budget) {
 }
 function buildDayPlan() {
   const c = dietCalc(); if (!c.target) return null;
-  const rand = seededRand(today() + "|" + (store.get(planSeedKey()) || "0") + "|" + c.target + "|" + c.meals);
+  const base = today() + "|" + (store.get(planSeedKey()) || "0") + "|" + c.target + "|" + c.meals, swaps = planSwaps();
   const slots = SLOT_SETS[c.meals], wsum = slots.reduce((a, s) => a + SLOT_W[s], 0), used = new Set();
   const times = c.meals === 1 ? slots.map(() => mealTimes(1)[0]) : mealTimes(slots.length);
   const meals = slots.map((slot, i) => {
@@ -1393,6 +1422,8 @@ function buildDayPlan() {
     let fits = pool.filter((r) => r.kcal <= budget && r.kcal >= budget * (slot === "main" ? 0.45 : 0.3));
     if (!fits.length) fits = pool.filter((r) => r.kcal <= budget);
     if (!fits.length) fits = pool.slice().sort((a, b) => a.kcal - b.kcal).slice(0, 3);
+    // each meal has its own dice, so one meal can be swapped without changing the others
+    const rand = seededRand(base + "|" + i + "|" + (swaps[i] || 0));
     const r = fits[Math.floor(rand() * fits.length)]; used.add(r.id);
     const sz = sizeMeal(slot, r, budget, c.meals);
     return { slot, time: times[i], r, ...sz };
@@ -1400,27 +1431,45 @@ function buildDayPlan() {
   const total = meals.reduce((a, m) => a + m.kcal, 0), protein = meals.reduce((a, m) => a + m.p, 0);
   return { meals, total, protein, target: c.target };
 }
+const planSwapKey = () => "plan-swap-" + today();
+function planSwaps() { try { return JSON.parse(store.get(planSwapKey()) || "[]"); } catch (e) { return []; } }
+let planAnim = null; // "all" after a shuffle, or the index of the swapped meal
+const mealLabel = (m) => m.slot !== "main" ? tr("Snack", "নাস্তা") : m.time < 11 * 60 ? tr("Breakfast", "সকালের খাবার") : m.time < 17 * 60 ? tr("Lunch", "দুপুরের খাবার") : tr("Dinner", "রাতের খাবার");
 function planHTML(compact) {
   const pl = buildDayPlan(); if (!pl) return "";
-  const kc = tr("kcal", "ক্যালরি");
-  const rows = pl.meals.map((m, i) => `<li class="pm">
-      <span class="pm-time num">${clockOf(m.time)}</span>
-      <span class="pm-body"><button class="link-plain" data-r="${m.r.id}"><b>${esc(m.r.name)}</b></button>
+  const pct = Math.min(100, Math.round((pl.total / pl.target) * 100)), diff = pl.total - pl.target;
+  const anim = planAnim; planAnim = null;
+  const cards = pl.meals.map((m, i) => `<li class="pmc${anim === "all" || anim === i ? " pop" : ""}" style="--d:${anim === "all" ? i * 90 : 0}ms">
+      <button class="pmc-pic tile ${TINT(m.r)}" data-r="${m.r.id}" aria-label="${esc(m.r.name)}">${PIC(m.r.id)}</button>
+      <div class="pmc-tx">
+        <span class="pmc-when"><b class="num">${clockOf(m.time)}</b> · ${mealLabel(m)}</span>
+        <button class="link-plain pmc-name" data-r="${m.r.id}">${esc(m.r.name)}</button>
         ${m.serv > 1 ? `<small class="num">${m.serv === 2 ? tr("2 servings", "২ জনের পরিমাণ") : tr("1½ servings", "দেড় জনের পরিমাণ")}</small>` : ""}
-        ${m.adds.length ? `<small>+ ${[...new Set(m.adds)].map((k) => { const n = m.adds.filter((x) => x === k).length; return (n > 1 ? N(n) + " × " : "") + esc(tr(ADDONS[k][2], ADDONS[k][3])); }).join(", ")}</small>` : ""}</span>
-      <span class="pm-k num">${fmtBig(m.kcal)}</span></li>`).join("");
-  const diff = pl.total - pl.target;
+        ${m.adds.length ? `<small>+ ${[...new Set(m.adds)].map((k) => { const n = m.adds.filter((x) => x === k).length; return (n > 1 ? N(n) + " × " : "") + esc(tr(ADDONS[k][2], ADDONS[k][3])); }).join(", ")}</small>` : ""}
+      </div>
+      <div class="pmc-side"><span class="pmc-k num">${fmtBig(m.kcal)}<small>${tr("kcal", "ক্যালরি")}</small></span>
+        <button class="pmc-swap" data-swap="${i}" aria-label="${tr("Swap this dish", "এই খাবারটা বদলান")}" title="${tr("Swap this dish", "এই খাবারটা বদলান")}">↻</button></div>
+    </li>`).join("");
   return `<div class="card plan-card">
-    <div class="section-h"><h2 style="font-size:1.15rem">${tr("Your plan today", "আজ আপনার খাবারের প্ল্যান")}</h2><button class="link" id="plan-shuffle" style="min-height:0">↻ ${tr("Shuffle", "বদলে দিন")}</button></div>
-    ${compact ? `<button class="link small" data-sub="prep" style="min-height:0;justify-self:start">${tr("Cook once for several days →", "একবার রেঁধে কয়েক দিন →")}</button>` : ""}
-    <ol class="pm-list">${rows}</ol>
-    <p class="small muted num">${tr(`Total ${fmtBig(pl.total)} of ${fmtBig(pl.target)} kcal · about ${pl.protein} g protein`, `মোট ${fmtBig(pl.total)} / ${fmtBig(pl.target)} ক্যালরি · প্রোটিন প্রায় ${N(pl.protein)} গ্রাম`)}${Math.abs(diff) > 120 ? (diff < 0 ? tr(" · add a fruit or yoghurt to reach it", " · লক্ষ্যে পৌঁছাতে একটা ফল বা দই যোগ করুন") : "") : ""}</p>
-    ${compact ? "" : `<p class="small muted">${tr("Tap a dish to see the recipe. Use the same oil-light methods as the recipes, and drink plenty of water.", "রেসিপি দেখতে খাবারের নামে চাপুন। রেসিপির মতো কম তেলে রান্না করুন, আর প্রচুর পানি খান।")}</p>`}
+    <div class="section-h"><h2 style="font-size:1.15rem">${tr("Your plan today", "আজ আপনার খাবারের প্ল্যান")}</h2>${compact ? `<button class="link small" data-sub="prep" style="min-height:0">${tr("Week plan →", "সপ্তাহের প্ল্যান →")}</button>` : ""}</div>
+    <div class="pl-meter"><div class="pl-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>
+      <span class="small num"><b>${fmtBig(pl.total)}</b> / ${fmtBig(pl.target)} ${tr("kcal", "ক্যালরি")} · ${tr(`about ${pl.protein} g protein`, `প্রোটিন প্রায় ${N(pl.protein)} গ্রাম`)}${Math.abs(diff) > 120 && diff < 0 ? tr(" · add a fruit or yoghurt to reach it", " · লক্ষ্যে পৌঁছাতে একটা ফল বা দই যোগ করুন") : ""}</span></div>
+    <ol class="pmc-list">${cards}</ol>
+    <button class="shuffle-btn" id="plan-shuffle"><span class="sh-ic" aria-hidden="true">🎲</span><span><b>${tr("Shuffle the whole day", "পুরো দিনের খাবার বদলে দিন")}</b><small>${tr("Same calories, new dishes. Or tap ↻ to swap just one.", "ক্যালরি একই, খাবার নতুন। শুধু একটা বদলাতে ↻ চাপুন।")}</small></span></button>
+    ${compact ? "" : `<p class="small muted">${tr("Tap a dish to see the recipe. Use the same oil-light methods as the recipes, and drink plenty of water.", "রেসিপি দেখতে খাবারে চাপুন। রেসিপির মতো কম তেলে রান্না করুন, আর প্রচুর পানি খান।")}</p>`}
   </div>`;
 }
 function bindPlan(root, rerender) {
   const b = root.querySelector("#plan-shuffle");
-  if (b) b.onclick = () => { store.set(planSeedKey(), String((+store.get(planSeedKey()) || 0) + 1)); rerender(); };
+  if (b) b.onclick = () => {
+    b.classList.add("spin");
+    store.set(planSeedKey(), String((+store.get(planSeedKey()) || 0) + 1)); store.set(planSwapKey(), "[]");
+    setTimeout(() => { planAnim = "all"; rerender(); }, 350);
+  };
+  root.querySelectorAll("[data-swap]").forEach((x) => (x.onclick = () => {
+    const i = +x.dataset.swap, sw = planSwaps(); sw[i] = (sw[i] || 0) + 1; store.set(planSwapKey(), JSON.stringify(sw));
+    x.classList.add("spin"); setTimeout(() => { planAnim = i; rerender(); }, 250);
+  }));
   if (typeof bindCommon === "function") bindCommon(root);
 }
 
