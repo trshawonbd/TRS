@@ -51,6 +51,7 @@ const fmtBig = (n) => N(Math.round(n).toLocaleString("en-US"));
 
 async function markCooked(rid) {
   const r = R[rid]; if (!r) return;
+  if (needLogin(tr("Keep a log of what you cook and earn badges.", "কী রাঁধলেন তার খাতা রাখুন আর ব্যাজ জিতুন।"))) return;
   const before = earnedBadges(journeyStats());
   if (!cookedToday(rid)) {
     const row = { recipe_id: rid, day: today(), cooked_by: S.user?.id || null, created_at: new Date().toISOString() };

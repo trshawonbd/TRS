@@ -599,6 +599,13 @@ details.wday summary::-webkit-details-marker { display: none; }
 .sb-tx small { font-size: .88rem; opacity: .85; }
 .sb-go { font-size: 1.6rem; line-height: 1; }
 @media (hover: hover) and (pointer: fine) { .spin-banner:hover .sb-wheel { transform: rotate(60deg); } .sb-wheel { transition: transform .4s ease; } }
+
+/* sign-in invite and premium */
+.ticks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ticks li { display: grid; grid-template-columns: 22px 1fr; gap: 6px; font-size: .95rem; }
+.ticks li::before { content: "✓"; color: var(--leaf); font-weight: 700; }
+.signin-card { gap: 12px; }
+.premium-card { background: var(--saffron-2); color: var(--ink); }
 </style>
 </head>
 <body>
@@ -694,7 +701,7 @@ details.wday summary::-webkit-details-marker { display: none; }
   <div class="or" id="auth-or" hidden>or</div>
   <button class="gbtn" id="auth-google" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z" fill="#4285F4"/><path d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z" fill="#34A853"/><path d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2z" fill="#FBBC05"/><path d="M12 6c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10C7.2 7.7 9.4 6 12 6z" fill="#EA4335"/></svg>Continue with Google</button>
   <p class="auth-msg" id="auth-msg" role="status"></p>
-  <button class="link" id="auth-guest">Use without an account</button>
+  <button class="link" id="auth-guest">Just browse recipes for now</button>
   <p class="legal"><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms of Use</a></p>
 </div></div>
 
@@ -1004,6 +1011,7 @@ const fmtBig = (n) => N(Math.round(n).toLocaleString("en-US"));
 
 async function markCooked(rid) {
   const r = R[rid]; if (!r) return;
+  if (needLogin(tr("Keep a log of what you cook and earn badges.", "কী রাঁধলেন তার খাতা রাখুন আর ব্যাজ জিতুন।"))) return;
   const before = earnedBadges(journeyStats());
   if (!cookedToday(rid)) {
     const row = { recipe_id: rid, day: today(), cooked_by: S.user?.id || null, created_at: new Date().toISOString() };
@@ -1897,6 +1905,7 @@ function localFavs() { try { return JSON.parse(store.get("favs") || "[]"); } cat
 function FAV_IDS() { return inFamily() ? new Set(S.favs.map((f) => f.recipe_id)) : new Set(localFavs()); }
 function isMyFav(rid) { return inFamily() ? S.favs.some((f) => f.user_id === S.user.id && f.recipe_id === rid) : localFavs().includes(rid); }
 async function toggleFav(rid) {
+  if (needLogin(tr("Save your favourite recipes and find them on any phone.", "পছন্দের রেসিপি জমিয়ে রাখুন, যেকোনো ফোনে পাবেন।"))) return;
   if (!inFamily()) {
     const f = new Set(localFavs()); f.has(rid) ? f.delete(rid) : f.add(rid);
     store.set("favs", JSON.stringify([...f])); refreshAll(); return;
@@ -1984,6 +1993,44 @@ function nextMealHTML() {
         : `<p class="small muted">${tr("No cooking needed for this one.", "এটার জন্য রান্না লাগবে না।")}</p>`}
     </div></article>`;
 }
+/* sign in only when a feature needs it; recipes and the wheel stay open to everyone */
+function needLogin(why) {
+  if (S.user) return false;
+  openSheet(`<h3>🔒 ${tr("Sign in to use this", "এটা ব্যবহার করতে লগ ইন করুন")}</h3>
+    <p>${why}</p>
+    <p class="small muted">${tr("It's free. Everything is saved to your account, so it works on any phone or computer.", "এটা ফ্রি। সব আপনার অ্যাকাউন্টে জমা থাকে, তাই যেকোনো ফোন বা কম্পিউটারে পাবেন।")}</p>
+    <button class="btn primary block" id="nl-go">${tr("Sign in or create account", "লগ ইন বা অ্যাকাউন্ট খুলুন")}</button>
+    <button class="btn ghost block" id="nl-no">${tr("Not now", "এখন না")}</button>`);
+  $("nl-go").onclick = () => { closeSheet(); showAuth(true); };
+  $("nl-no").onclick = closeSheet;
+  return true;
+}
+const signInCard = () => `<div class="card signin-card"><p class="eyebrow">${tr("Free account", "ফ্রি অ্যাকাউন্ট")}</p>
+  <h2 style="font-size:1.3rem">${tr("Plan meals for your goal", "লক্ষ্য অনুযায়ী খাবারের প্ল্যান")}</h2>
+  <ul class="ticks"><li>${tr("Daily calorie target, BMI and goal weight", "দৈনিক ক্যালরির লক্ষ্য, BMI আর লক্ষ্য ওজন")}</li><li>${tr("Meal plan for today and the whole week", "আজকের আর পুরো সপ্তাহের খাবারের প্ল্যান")}</li><li>${tr("Favourites, cooking log and badges", "পছন্দের রেসিপি, রান্নার খাতা আর ব্যাজ")}</li><li>${tr("Shared shopping list with your family", "পরিবারের সাথে বাজারের তালিকা")}</li></ul>
+  <button class="btn primary block" data-login>${tr("Sign in or create account", "লগ ইন বা অ্যাকাউন্ট খুলুন")}</button></div>`;
+/* Premium isn't for sale yet: ask who would pay, and how much */
+const PREMIUM_OPTS = () => [["m99", tr("৳99 a month", "মাসে ৳৯৯")], ["m149", tr("৳149 a month", "মাসে ৳১৪৯")], ["y999", tr("৳999 a year", "বছরে ৳৯৯৯")], ["free", tr("I'd only use the free version", "আমি শুধু ফ্রি ভার্সনই ব্যবহার করব")]];
+const premiumCard = () => `<button class="card rowcard premium-card" data-premium><span><b>⭐ ${tr("Premium is coming", "প্রিমিয়াম আসছে")}</b><small>${tr("Tell us if you'd use it and what it's worth to you", "ব্যবহার করবেন কিনা আর কত দিতে চান, জানান")}</small></span><span class="chev">${ICON.chev}</span></button>`;
+async function openPremium() {
+  if (needLogin(tr("Sign in so we can let you know when Premium is ready.", "লগ ইন করুন, প্রিমিয়াম চালু হলে আপনাকে জানাব।"))) return;
+  let mine = null;
+  try { const { data } = await sb.from("premium_interest").select("choice").eq("user_id", S.user.id).maybeSingle(); mine = data && data.choice; } catch (e) {}
+  openSheet(`<h3>⭐ ${tr("Deshi Diet Thala Premium", "দেশি ডায়েট থালা প্রিমিয়াম")}</h3>
+    <p class="small muted">${tr("Recipes and the wheel will always be free. Premium would add:", "রেসিপি আর চাকা সবসময় ফ্রি থাকবে। প্রিমিয়ামে থাকবে:")}</p>
+    <ul class="ticks"><li>${tr("Meal plans for your calorie goal, every day", "প্রতিদিন আপনার ক্যালরির লক্ষ্য অনুযায়ী খাবারের প্ল্যান")}</li><li>${tr("Cook once or twice, eat all week, with the shopping list", "সপ্তাহে ১–২ বার রেঁধে পুরো সপ্তাহ, বাজারের তালিকাসহ")}</li><li>${tr("Bigger families and more photos", "বড় পরিবার আর বেশি ছবি")}</li><li>${tr("New recipes first", "নতুন রেসিপি সবার আগে")}</li></ul>
+    <p><b>${tr("Would you pay for it?", "এর জন্য টাকা দেবেন?")}</b></p>
+    <div class="checks">${PREMIUM_OPTS().map(([k, l]) => `<label><input type="radio" name="prem" value="${k}" ${mine === k ? "checked" : ""}> ${l}</label>`).join("")}</div>
+    <button class="btn primary block" id="prem-ok">${mine ? tr("Update my answer", "উত্তর বদলান") : tr("Send", "পাঠান")}</button>
+    <p class="small muted">${tr("Nothing is charged now. This just helps us decide.", "এখন কোনো টাকা কাটা হবে না। শুধু সিদ্ধান্ত নিতে সাহায্য করবে।")}</p>`);
+  $("prem-ok").onclick = async () => {
+    const v = ($("bs-card").querySelector("input[name=prem]:checked") || {}).value;
+    if (!v) return toast(tr("Pick one answer", "একটা উত্তর বেছে নিন"));
+    const { error } = await sb.from("premium_interest").upsert({ user_id: S.user.id, choice: v, lang: LANG, updated_at: new Date().toISOString() });
+    closeSheet();
+    toast(error ? tr("Couldn't save, try again", "সেভ হয়নি, আবার চেষ্টা করুন") : tr("Thank you! We'll let you know.", "ধন্যবাদ! চালু হলে জানাব।"));
+  };
+}
 /* Today screen: people choose which cards they want */
 function homeHide() { try { return JSON.parse(store.get("homeHide") || "{}"); } catch (e) { return {}; } }
 function setHomeHide(p) { store.set("homeHide", JSON.stringify({ ...homeHide(), ...p })); }
@@ -2038,6 +2085,7 @@ function todayStatsHTML() {
 let planSeg = store.get("planSeg") === "week" ? "week" : "today";
 function renderPlanTab() {
   const box = $("s-plan"); if (!box) return;
+  if (!S.user) { box.innerHTML = signInCard(); bindCommon(box); return; }
   const c = dietCalc(), d = diet();
   const seg = `<div class="seg" role="tablist">${[["today", tr("Today", "আজ")], ["week", tr("This week", "এই সপ্তাহ")]].map(([k, l]) => `<button role="tab" data-seg="${k}" aria-selected="${planSeg === k}">${l}</button>`).join("")}</div>`;
   const summary = c.target ? `<button class="card rowcard" data-sub="diet"><span><b class="num">${tr(`${fmtBig(c.target)} kcal · ${c.meals} meal${c.meals > 1 ? "s" : ""}`, `${fmtBig(c.target)} ক্যালরি · ${N(c.meals)} বেলা`)}${d.fast !== "none" ? " · " + N(d.fast) : ""}</b><small>${prepCfg().cook < 7 ? tr(`Cooking ${prepCfg().cook === 1 ? "once" : prepCfg().cook + " times"} a week for ${prepCfg().people}`, `সপ্তাহে ${N(prepCfg().cook)} বার রান্না, ${N(prepCfg().people)} জনের জন্য`) : tr("Cooking every day", "প্রতিদিন রান্না")} · ${tr("change", "বদলান")}</small></span><span class="chev">${ICON.chev}</span></button>` : "";
@@ -2047,7 +2095,7 @@ function renderPlanTab() {
       <button class="btn primary block" data-sub="diet">${tr("Set my goal", "লক্ষ্য ঠিক করুন")}</button></div>`;
     bindCommon(box); return;
   }
-  box.innerHTML = `${summary}${seg}<div id="plan-body"></div>`;
+  box.innerHTML = `${summary}${seg}<div id="plan-body"></div>${premiumCard()}`;
   const body = $("plan-body");
   if (planSeg === "week") renderPrep(body);
   else { body.innerHTML = prepOn() ? prepTodayHTML() : planHTML(false); const redraw = () => renderPlanTab(); bindPlan(body, redraw); }
@@ -2078,12 +2126,12 @@ function renderHome() {
   const unread = S.inbox.filter((x) => !x.read_at);
   const hide = homeHide(), cookedDone = r && cookedToday(r.id) && hide.doneDish === today();
   // no family dish picked yet (or it's cooked and put away): lead with the next meal from the personal plan
-  if ((!r || cookedDone) && dietCalc().target) hero = nextMealHTML() || hero;
+  if ((!r || cookedDone) && S.user && dietCalc().target) hero = nextMealHTML() || hero;
   else if (cookedDone) hero = "";
   if (hide.hero) hero = "";
   const spinRow = hide.spin ? "" : `<button class="spin-banner" data-tab-go="spin"><span class="sb-wheel" aria-hidden="true"></span><span class="sb-tx"><b>${tr("Can't decide what to cook?", "কী রাঁধবেন ঠিক করতে পারছেন না?")}</b><small>${tr("Spin the wheel", "চাকা ঘোরান")}</small></span><span class="sb-go" aria-hidden="true">›</span></button>`;
   if (!hero.includes('class="btn primary" data-tab-go="spin"')) hero += spinRow;
-  const side = (hide.fast ? "" : fastCard()) + (hide.stats ? "" : todayStatsHTML());
+  const side = S.user ? (hide.fast ? "" : fastCard()) + (hide.stats ? "" : todayStatsHTML()) : signInCard();
   box.innerHTML = `
     ${unread.length && !hide.msgs ? `<button class="msg-strip" data-tab-go="shop"><span class="dot"></span><span><b>${esc(unread[0].title)}</b><br><span class="small muted">${esc(nameOf(unread[0].from_user))} · ${ago(unread[0].created_at)}${unread.length > 1 ? tr(` · +${unread.length - 1} more`, ` · আরও ${N(unread.length - 1)}টি`) : ""}</span></span></button>` : ""}
     ${hero ? `<div class="home-main">${hero}</div>` : ""}
@@ -2094,7 +2142,7 @@ function renderHome() {
   const hc = $("hero-cooked"); if (hc) hc.onclick = () => markCooked(rid);
   const nc = $("next-cooked"); if (nc) nc.onclick = () => markCooked(nc.dataset.rid);
   const hd = $("hero-done"); if (hd) hd.onclick = () => { setHomeHide({ doneDish: today() }); renderHome(); };
-  $("home-edit").onclick = openHomeEdit;
+  $("home-edit").onclick = () => { if (!needLogin(tr("Choose what your Today screen shows.", "আজকের পাতায় কী দেখাবে, নিজে ঠিক করুন।"))) openHomeEdit(); };
   const hp = $("hero-photo"); if (hp) hp.onclick = () => addPhoto(R[rid]);
 }
 /* sideways rows: arrows for mouse users, drag with the mouse, swipe on touch */
@@ -2125,6 +2173,8 @@ document.addEventListener("click", (e) => { const el = e.target.closest(".carous
 function bindCommon(root) {
   root.querySelectorAll("[data-r]").forEach((b) => (b.onclick = () => openRecipe(b.dataset.r)));
   root.querySelectorAll("[data-open]").forEach((b) => (b.onclick = () => openRecipe(b.dataset.open)));
+  root.querySelectorAll("[data-login]").forEach((b) => (b.onclick = () => showAuth(true)));
+  root.querySelectorAll("[data-premium]").forEach((b) => (b.onclick = openPremium));
   root.querySelectorAll("[data-tab-go]").forEach((b) => (b.onclick = () => showTab(b.dataset.tabGo)));
   root.querySelectorAll("[data-cat-go]").forEach((b) => (b.onclick = () => { cat = b.dataset.catGo; showTab("recipes"); renderRecipes(); }));
   root.querySelectorAll("[data-sub]").forEach((b) => (b.onclick = () => openSub(b.dataset.sub)));
@@ -2320,6 +2370,7 @@ async function shareCard(r, items, heading) {
 /* ---------- sub pages: diet plan, kitchen, activity, tips ---------- */
 let planDay = (DAYS.find((d) => d.js === new Date().getDay()) || DAYS[0]).k;
 function openSub(kind) {
+  if (["diet", "prep", "journey", "plan"].includes(kind) && needLogin(kind === "journey" ? tr("Your cooking log and badges are saved to your account.", "রান্নার খাতা আর ব্যাজ আপনার অ্যাকাউন্টে জমা থাকে।") : tr("Your diet, calorie target and meal plans are saved to your account.", "আপনার ডায়েট, ক্যালরির লক্ষ্য আর খাবারের প্ল্যান অ্যাকাউন্টে জমা থাকে।"))) return;
   if (kind === "prep") { planSeg = "week"; store.set("planSeg", "week"); showTab("plan"); renderPlanTab(); return; }
   const titles = { plan: tr("Diet plan", "ডায়েট প্ল্যান"), kitchen: tr("My kitchen", "আমার রান্নাঘর"), activity: tr("Activity", "কে কী করেছে"), tips: tr("Healthy swaps", "স্বাস্থ্যকর বদল"), journey: tr("Our kitchen journey", "আমাদের রান্নার খাতা"), diet: tr("My diet", "আমার ডায়েট"), prep: tr("Week plan", "সপ্তাহের প্ল্যান") };
   openPageShell(kind, titles[kind]);
@@ -2518,11 +2569,12 @@ async function renderFamily() {
     box.innerHTML = `<div class="card"><h2 style="font-size:1.4rem">${tr("No family yet", "এখনো পরিবার নেই")}</h2><button class="btn primary block" id="go-setup">${tr("Create or join a family", "পরিবার তৈরি করুন বা যোগ দিন")}</button></div>${rows(common)}`;
     box.insertAdjacentHTML("afterbegin", rows(health));
     $("go-setup").onclick = () => showSetup(true);
+    box.insertAdjacentHTML("beforeend", premiumCard());
   } else {
     const ps = await pushState();
     const link = location.origin + location.pathname + "?join=" + S.family.code;
     const pushSub = ps === "on" ? tr("On for this phone", "এই ফোনে চালু") : ps === "denied" ? tr("Blocked in phone settings", "ফোনের সেটিংসে বন্ধ করা") : ps === "unsupported" ? (/iphone|ipad/i.test(navigator.userAgent) ? tr("Add to Home Screen first, then open from the icon", "আগে Home Screen-এ যোগ করে আইকন থেকে খুলুন") : tr("Not supported in this browser", "এই ব্রাউজারে চলে না")) : tr("Get a ping when your partner needs something", "সঙ্গীর কিছু লাগলে ফোনে জানবেন");
-    box.innerHTML = `${rows(health)}
+    box.innerHTML = `${rows(health)}${premiumCard()}
       <div class="card fam-head">
         <div class="members">${S.members.map((m) => `<span class="av" title="${esc(m.name)}">${initial(m.name)}</span>`).join("")}</div>
         <div><h2 style="font-size:1.5rem">${esc(S.family.name)}</h2><p class="small muted">${S.members.map((m) => esc(m.user_id === S.user.id ? m.name + tr(" (you)", " (আপনি)") : m.name)).join(" · ")}</p></div>
@@ -2775,7 +2827,7 @@ function translateStatic() {
   T("#auth-signup > label:nth-of-type(1)", "আপনার নাম", firstText); T("#auth-signup > label:nth-of-type(2)", "ইমেইল", firstText); T("#auth-signup > label:nth-of-type(3)", "পাসওয়ার্ড", firstText);
   T(".kind label:nth-child(1)", "পরিবার"); T(".kind label:nth-child(2)", "শুধু আমি"); T("#auth-signup > button", "অ্যাকাউন্ট খুলুন");
   T("#auth-phone > label:nth-of-type(1)", "আপনার নাম", firstText); T("#auth-phone > label:nth-of-type(2)", "দেশের কোডসহ ফোন নম্বর", firstText); T("#ph-code-row", "SMS-এর কোড", firstText); T("#auth-phone > button", "কোড পাঠান");
-  T(".or", "অথবা"); T('.legal a[href="privacy.html"]', "প্রাইভেসি পলিসি"); T('.legal a[href="terms.html"]', "ব্যবহারের শর্ত"); T("#auth-google", "গুগল দিয়ে চালিয়ে যান"); T("#auth-guest", "অ্যাকাউন্ট ছাড়াই ব্যবহার করুন");
+  T(".or", "অথবা"); T('.legal a[href="privacy.html"]', "প্রাইভেসি পলিসি"); T('.legal a[href="terms.html"]', "ব্যবহারের শর্ত"); T("#auth-google", "গুগল দিয়ে চালিয়ে যান"); T("#auth-guest", "এখন শুধু রেসিপি দেখি");
   T("#setup h1", "আপনার পরিবার"); T("#setup .over-in > p.muted", "নতুন পরিবার তৈরি করুন, অথবা সঙ্গীর পাঠানো ৬ অক্ষরের কোড দিয়ে যোগ দিন।");
   T("#setup-create label", "পরিবারের নাম", firstText); A("#fam-name", "placeholder", "যেমন: রহমান পরিবার"); T("#setup-create button", "পরিবার তৈরি করুন");
   T("#setup-join label", "ইনভাইট কোড", firstText); T("#setup-join button", "যোগ দিন"); T("#setup-single", "আমি একাই ব্যবহার করব");
@@ -2816,7 +2868,7 @@ async function start() {
   }
   const onSession = async (session) => {
     S.user = session?.user || null;
-    if (!S.user) { S.family = null; if (!store.get("guest") || invite?.name) showAuth(true); refreshAll(); return; }
+    if (!S.user) { S.family = null; if (invite?.name) showAuth(true); refreshAll(); return; }
     showAuth(false);
     const { data: mem } = await sb.from("family_members").select("family_id, families(*)").eq("user_id", S.user.id);
     const pending = store.get("pendingJoin");

@@ -582,4 +582,11 @@ details.wday summary::-webkit-details-marker { display: none; }
 .sb-tx small { font-size: .88rem; opacity: .85; }
 .sb-go { font-size: 1.6rem; line-height: 1; }
 @media (hover: hover) and (pointer: fine) { .spin-banner:hover .sb-wheel { transform: rotate(60deg); } .sb-wheel { transition: transform .4s ease; } }
+
+/* sign-in invite and premium */
+.ticks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ticks li { display: grid; grid-template-columns: 22px 1fr; gap: 6px; font-size: .95rem; }
+.ticks li::before { content: "✓"; color: var(--leaf); font-weight: 700; }
+.signin-card { gap: 12px; }
+.premium-card { background: var(--saffron-2); color: var(--ink); }
 </style>
