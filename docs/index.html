@@ -161,6 +161,8 @@ h1, h2 { font-family: var(--display); font-weight: 700; letter-spacing: -.01em; 
 .pagebar .pt { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0; transition: opacity .2s; }
 .pagebar.scrolled .pt { opacity: 1; }
 .r-hero .tile { aspect-ratio: 4 / 3; border-radius: 28px; }
+/* family photos are usually square: show the whole plate instead of cutting top and bottom */
+.r-hero .tile:has(img.photo) { aspect-ratio: 1; }
 .r-hero .tile svg { width: 80%; }
 .tile img.photo { width: 100%; height: 100%; object-fit: cover; display: block; }
 .photo-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
