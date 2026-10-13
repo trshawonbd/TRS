@@ -40,7 +40,7 @@ function buildWeek() {
         let meal;
         if (slot === "main") {
           const r = dishes[n++ % dishes.length];
-          const sz = sizeMeal("main", r, (c.target * SLOT_W.main) / wsum, c.meals);
+          const sz = swapCarb(sizeMeal("main", r, (c.target * SLOT_W.main) / wsum, c.meals), diet().carb || "rice");
           portions.set(r.id, portions.get(r.id) + sz.serv * cfg.people);
           riceCups += (sz.adds.filter((a) => a === "rice").length + sz.adds.filter((a) => a === "halfrice").length * 0.5) * cfg.people;
           rotis += sz.adds.filter((a) => a === "roti").length * cfg.people;

@@ -229,8 +229,41 @@ const ADDONS = {
   yog: [100, 15, "150 g Greek yoghurt", "১৫০ গ্রাম গ্রিক দই"],
   fruit: [80, 1, "1 fruit (guava, apple or orange)", "১টি ফল (পেয়ারা, আপেল বা কমলা)"],
   egg: [75, 6, "1 boiled egg", "১টি সেদ্ধ ডিম"],
-  nuts: [70, 3, "10 almonds", "১০টি কাঠবাদাম"]
+  nuts: [70, 3, "10 almonds", "১০টি কাঠবাদাম"],
+  // rice alternatives (full and half portion)
+  brownrice: [215, 5, "1 cup red or brown rice (lal chal)", "১ কাপ লাল চালের ভাত"],
+  halfbrown: [108, 3, "½ cup red or brown rice", "আধা কাপ লাল চালের ভাত"],
+  cauli: [60, 3, "1½ cups cauliflower rice", "দেড় কাপ ফুলকপির ভাত"],
+  halfcauli: [40, 2, "1 cup cauliflower rice", "১ কাপ ফুলকপির ভাত"],
+  roti2: [220, 6, "2 atta rotis", "২টি আটার রুটি"],
+  sweetpot: [180, 3, "1 large boiled sweet potato", "১টি বড় সেদ্ধ মিষ্টি আলু"],
+  halfsweetpot: [90, 2, "½ boiled sweet potato", "আধা সেদ্ধ মিষ্টি আলু"],
+  quinoa: [220, 8, "1 cup cooked quinoa", "১ কাপ রান্না করা কিনোয়া"],
+  halfquinoa: [110, 4, "½ cup cooked quinoa", "আধা কাপ কিনোয়া"],
+  veg: [70, 3, "a big bowl of mixed vegetables", "এক বাটি মিশ্র সবজি"]
 };
+/* rice stays the default; anyone can swap it. [full, half, English, Bangla, why] */
+const CARBS = () => [
+  ["rice", "rice", "halfrice", tr("Rice", "ভাত"), tr("As usual", "যেমন খান")],
+  ["brown", "brownrice", "halfbrown", tr("Red or brown rice", "লাল চালের ভাত"), tr("More fibre, keeps you full longer", "আঁশ বেশি, অনেকক্ষণ পেট ভরা")],
+  ["cauli", "cauli", "halfcauli", tr("Cauliflower rice", "ফুলকপির ভাত"), tr("Far fewer calories", "ক্যালরি অনেক কম")],
+  ["roti", "roti2", "roti", tr("Atta roti", "আটার রুটি"), tr("Whole wheat", "লাল আটা")],
+  ["sweetpot", "sweetpot", "halfsweetpot", tr("Sweet potato", "মিষ্টি আলু"), tr("Slow energy, lots of vitamin A", "ধীরে শক্তি দেয়, ভিটামিন এ")],
+  ["quinoa", "quinoa", "halfquinoa", tr("Quinoa", "কিনোয়া"), tr("More protein", "প্রোটিন বেশি")],
+  ["veg", "veg", "veg", tr("No grain: extra vegetables", "শস্য ছাড়া: বাড়তি সবজি"), tr("Lowest calories", "সবচেয়ে কম ক্যালরি")]
+];
+const RICEY = new Set(["rice", "halfrice", "brownrice", "halfbrown", "cauli", "halfcauli", "roti2", "sweetpot", "halfsweetpot", "quinoa", "halfquinoa", "veg"]);
+const planCarbKey = () => "plan-carb-" + today();
+function planCarbs() { try { return JSON.parse(store.get(planCarbKey()) || "{}"); } catch (e) { return {}; } }
+/* swap the rice in a sized meal for another carb, keeping portions; marks meals that had rice */
+function swapCarb(sz, choice) {
+  const had = sz.adds.some((k) => k === "rice" || k === "halfrice");
+  if (!had) return { ...sz, hasRice: false };
+  const alt = CARBS().find((c) => c[0] === choice) || CARBS()[0];
+  let kcal = sz.kcal, p = sz.p;
+  const adds = sz.adds.map((k) => { if (k !== "rice" && k !== "halfrice") return k; const n = k === "rice" ? alt[1] : alt[2]; kcal += ADDONS[n][0] - ADDONS[k][0]; p += ADDONS[n][1] - ADDONS[k][1]; return n; });
+  return { ...sz, adds, kcal: Math.round(kcal), p, hasRice: true, carb: alt[0] };
+}
 const SLOT_SETS = { 1: ["main", "snack"], 2: ["main", "main"], 3: ["main", "snack", "main"], 4: ["main", "snack", "main", "light"], 5: ["main", "snack", "main", "snack", "light"] };
 const SLOT_W = { main: 1, snack: 0.45, light: 0.3 };
 const POOL = {
@@ -297,7 +330,7 @@ function buildDayPlan() {
     // each meal has its own dice, so one meal can be swapped without changing the others
     const rand = seededRand(base + "|" + i + "|" + (swaps[i] || 0));
     const r = fits[Math.floor(rand() * fits.length)]; used.add(r.id);
-    const sz = sizeMeal(slot, r, budget, c.meals);
+    const sz = swapCarb(sizeMeal(slot, r, budget, c.meals), planCarbs()[i] || diet().carb || "rice");
     return { slot, time: times[i], r, ...sz };
   });
   const total = meals.reduce((a, m) => a + m.kcal, 0), protein = meals.reduce((a, m) => a + m.p, 0);
@@ -318,6 +351,7 @@ function planHTML(compact) {
         <button class="link-plain pmc-name" data-r="${m.r.id}">${esc(m.r.name)}</button>
         ${m.serv > 1 ? `<small class="num">${m.serv === 2 ? tr("2 servings", "২ জনের পরিমাণ") : tr("1½ servings", "দেড় জনের পরিমাণ")}</small>` : ""}
         ${m.adds.length ? `<small>+ ${[...new Set(m.adds)].map((k) => { const n = m.adds.filter((x) => x === k).length; return (n > 1 ? N(n) + " × " : "") + esc(tr(ADDONS[k][2], ADDONS[k][3])); }).join(", ")}</small>` : ""}
+        ${m.hasRice ? `<button class="carb-chip" data-carb="${i}">${m.carb === "rice" ? tr("🍚 Swap the rice", "🍚 ভাতের বদলে অন্য কিছু") : "↔ " + esc(CARBS().find((c) => c[0] === m.carb)[3])}</button>` : ""}
       </div>
       <div class="pmc-side"><span class="pmc-k num">${fmtBig(m.kcal)}<small>${tr("kcal", "ক্যালরি")}</small></span>
         <button class="pmc-swap" data-swap="${i}" aria-label="${tr("Swap this dish", "এই খাবারটা বদলান")}" title="${tr("Swap this dish", "এই খাবারটা বদলান")}">↻</button></div>
@@ -338,11 +372,29 @@ function bindPlan(root, rerender) {
     store.set(planSeedKey(), String((+store.get(planSeedKey()) || 0) + 1)); store.set(planSwapKey(), "[]");
     setTimeout(() => { planAnim = "all"; rerender(); }, 350);
   };
+  root.querySelectorAll("[data-carb]").forEach((x) => (x.onclick = () => openCarb(+x.dataset.carb, rerender)));
   root.querySelectorAll("[data-swap]").forEach((x) => (x.onclick = () => {
     const i = +x.dataset.swap, sw = planSwaps(); sw[i] = (sw[i] || 0) + 1; store.set(planSwapKey(), JSON.stringify(sw));
     x.classList.add("spin"); setTimeout(() => { planAnim = i; rerender(); }, 250);
   }));
   if (typeof bindCommon === "function") bindCommon(root);
+}
+
+/* choose what to eat instead of rice for one meal, or for every meal */
+function openCarb(i, rerender) {
+  const pc = planCarbs(), cur = pc[i] || diet().carb || "rice";
+  const kc = (k) => ADDONS[k][0];
+  openSheet(`<h3>${tr("Instead of rice", "ভাতের বদলে")}</h3>
+    <p class="small muted">${tr("Rice is fine. If you want something else with this meal, pick it here. Calories are for the same portion.", "ভাত খাওয়াই যায়। এই খাবারের সাথে অন্য কিছু চাইলে এখান থেকে বাছুন। ক্যালরি একই পরিমাণের হিসাবে।")}</p>
+    <div class="checks">${CARBS().map(([k, full, , name, why]) => `<label><input type="radio" name="carb" value="${k}" ${k === cur ? "checked" : ""}> <span>${name} <small class="muted num">· ${N(kc(full))} ${tr("kcal", "ক্যালরি")}</small><br><small class="muted">${esc(tr(ADDONS[full][2], ADDONS[full][3]))} · ${why}</small></span></label>`).join("")}</div>
+    <label class="carb-all"><input type="checkbox" id="carb-all" ${diet().carb && diet().carb !== "rice" && diet().carb === cur ? "checked" : ""}> ${tr("Use this for every meal from now on", "এখন থেকে সব খাবারে এটাই দিন")}</label>
+    <button class="btn primary block" id="carb-ok">${tr("Done", "ঠিক আছে")}</button>`);
+  $("carb-ok").onclick = () => {
+    const v = ($("bs-card").querySelector("input[name=carb]:checked") || {}).value || "rice";
+    if ($("carb-all").checked) { saveDiet({ ...diet(), carb: v }); store.set(planCarbKey(), "{}"); }
+    else { const n = planCarbs(); n[i] = v; store.set(planCarbKey(), JSON.stringify(n)); }
+    closeSheet(); rerender(); if (typeof refreshTodayBits === "function") refreshTodayBits();
+  };
 }
 
 /* "How is this calculated?" with the person's own numbers */
