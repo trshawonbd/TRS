@@ -356,6 +356,16 @@ function openReset() {
     setTimeout(() => location.reload(), 700);
   };
 }
+/* small "my next meal" row under the family's dish */
+function nextMealRow() {
+  const meals = todayMeals(); if (!meals.length) return "";
+  const now = new Date().getHours() * 60 + new Date().getMinutes();
+  const m = meals.find((x) => x.time + 60 >= now) || meals[meals.length - 1];
+  if (!m.r) return "";
+  return `<button class="card next-row" data-r="${m.r.id}"><span class="tile ${TINT(m.r)}">${PIC(m.r.id)}</span>
+    <span class="nr-tx"><small>${tr("Your plan · next meal", "আপনার প্ল্যান · পরের খাবার")} · <b class="num">${clockOf(m.time)}</b></small><b>${esc(m.r.name)}</b><small class="num">${N(m.kcal)} ${KCAL}</small></span>
+    <span class="chev">${ICON.chev}</span></button>`;
+}
 /* one compact card: target, streak, recipes tried */
 function todayStatsHTML() {
   const c = dietCalc(), s = journeyStats();
@@ -413,6 +423,8 @@ function renderHome() {
   if ((!r || cookedDone) && S.user && dietCalc().target) hero = nextMealHTML() || hero;
   else if (cookedDone) hero = "";
   if (hide.hero) hero = "";
+  // a family dish is showing: still show my own next meal from the plan, as a small row
+  else if (r && !cookedDone && S.user && dietCalc().target) hero += nextMealRow();
   const spinRow = hide.spin ? "" : `<button class="spin-banner" data-tab-go="spin"><span class="sb-wheel" aria-hidden="true"></span><span class="sb-tx"><b>${tr("Can't decide what to cook?", "কী রাঁধবেন ঠিক করতে পারছেন না?")}</b><small>${tr("Spin the wheel", "চাকা ঘোরান")}</small></span><span class="sb-go" aria-hidden="true">›</span></button>`;
   if (!hero.includes('class="btn primary" data-tab-go="spin"')) hero += spinRow;
   const side = S.user ? (hide.fast ? "" : fastCard()) + (hide.stats ? "" : todayStatsHTML()) : signInCard();
