@@ -1,7 +1,8 @@
 /* ================= Cook less often: a week plan built around 1–4 cooking days ================= */
-// Settings live with My diet on this phone: cook (cooking days a week, 7 = every day), people, cookDay (0 = Sunday).
-const prepCfg = () => { const d = diet(); return { cook: [1, 2, 3, 4, 7].includes(+d.cook) ? +d.cook : 7, people: Math.min(8, Math.max(1, +d.people || 2)), cookDay: Number.isInteger(+d.cookDay) && d.cookDay !== "" ? +d.cookDay % 7 : 5 }; };
-const prepOn = () => prepCfg().cook < 7 && !!dietCalc().target;
+// Settings live with My diet on this phone: cook (cooking days a week, 7 = every day, 8 = every day but one dish
+// that covers all of that day's meals), people, cookDay (0 = Sunday).
+const prepCfg = () => { const d = diet(), cook = [1, 2, 3, 4, 7, 8].includes(+d.cook) ? +d.cook : 7; return { cook, days: cook === 8 ? 7 : cook, oneDish: cook === 8, people: Math.min(8, Math.max(1, +d.people || 2)), cookDay: Number.isInteger(+d.cookDay) && d.cookDay !== "" ? +d.cookDay % 7 : 5 }; };
+const prepOn = () => prepCfg().cook !== 7 && !!dietCalc().target;
 
 // How well dishes keep. Fish and prawns: eat within 2 days. NO_FREEZE: fine for 3 days in the fridge, not frozen.
 const NO_BATCH = new Set(["larb", "fishchips", "jacket", "burrito", "friedrice", "stirfry", "tomatoegg", "paneer", "gambas", "tomyum", "paella", "roll", "tunawrap", "eggfriedrice", "noodles", "katsu", "oyakodon", "salmondon", "bibimbap", "miso", "mangochicken", "eggpotato", "yumwoonsen", "thaibeef", "tandoorisalad", "asianchicken"]);
@@ -20,13 +21,14 @@ function buildWeek() {
   const rand = seededRand(start + "|week|" + (store.get("week-seed-" + start) || "0") + "|" + c.target + "|" + c.meals + "|" + cfg.cook);
   const slots = SLOT_SETS[c.meals], wsum = slots.reduce((a, s) => a + SLOT_W[s], 0), times = mealTimes(slots.length);
   const mainIdx = slots.map((s, i) => (s === "main" ? i : -1)).filter((i) => i >= 0);
-  const offs = Array.from({ length: cfg.cook }, (_, k) => Math.round((k * 7) / cfg.cook));
+  const offs = Array.from({ length: cfg.days }, (_, k) => Math.round((k * 7) / cfg.days));
   const used = new Set(), sessions = [], days = Array.from({ length: 7 }, (_, i) => ({ date: addDays(start, i), meals: [] }));
   offs.forEach((off, k) => {
     const span = (k + 1 < offs.length ? offs[k + 1] : 7) - off;
     const mainBudget = (c.target * SLOT_W.main) / wsum;
-    const nDishes = Math.min(span * mainIdx.length, span >= 4 && mainIdx.length >= 2 ? 3 : mainIdx.length >= 2 || span >= 3 ? 2 : 1);
-    let pool = RECIPES.filter((r) => keepsFor(r, span) && !used.has(r.id));
+    const nDishes = cfg.oneDish ? 1 : Math.min(span * mainIdx.length, span >= 4 && mainIdx.length >= 2 ? 3 : mainIdx.length >= 2 || span >= 3 ? 2 : 1);
+    // one dish a day: anything that is good for lunch and again for dinner the same day
+    let pool = RECIPES.filter((r) => (cfg.oneDish ? POOL.main(r) : keepsFor(r, span)) && !used.has(r.id));
     let fits = pool.filter((r) => r.kcal <= mainBudget && r.kcal >= mainBudget * 0.45);
     if (fits.length < nDishes) fits = pool.filter((r) => r.kcal <= mainBudget);
     if (fits.length < nDishes) fits = pool;
@@ -103,19 +105,20 @@ async function addSessionToShop(s) {
 function renderPrep(pb) {
   const cfg = prepCfg(), c = dietCalc();
   const chip = (k, v, label, cur) => `<button type="button" class="chip" data-pk="${k}" data-pv="${v}" aria-pressed="${cur === v}">${label}</button>`;
-  const freqLabel = (n) => (n === 7 ? tr("Every day", "প্রতিদিন") : tr(n === 1 ? "Once a week" : `${n} times a week`, n === 1 ? "সপ্তাহে ১ বার" : `সপ্তাহে ${N(n)} বার`));
+  const freqLabel = (n) => (n === 8 ? tr("Every day, one dish", "প্রতিদিন, এক পদ") : n === 7 ? tr("Every day, different dishes", "প্রতিদিন, ভিন্ন পদ") : tr(n === 1 ? "Once a week" : `${n} times a week`, n === 1 ? "সপ্তাহে ১ বার" : `সপ্তাহে ${N(n)} বার`));
   let body = "";
   if (!c.target) body = `<div class="card"><p>${tr("First set your calorie target in My diet.", "আগে “আমার ডায়েট”-এ ক্যালরির লক্ষ্য ঠিক করুন।")}</p><button class="btn primary" data-sub="diet">${tr("Open My diet", "আমার ডায়েট খুলুন")}</button></div>`;
   else if (cfg.cook === 7) body = `<div class="card"><p class="muted">${tr("You cook every day, so the plan changes daily. Choose how often you want to cook above to get a batch-cooking week.", "আপনি প্রতিদিন রাঁধেন, তাই প্ল্যান রোজ বদলায়। একবারে রেঁধে কয়েক দিন খেতে চাইলে উপরে কতবার রাঁধবেন তা বাছুন।")}</p></div>`;
   else {
     const w = buildWeek();
-    body = `${w.sessions.map((s, k) => `<div class="card session">
+    const shown = cfg.oneDish ? w.sessions.filter((s) => s.date === today()) : w.sessions;
+    body = `${cfg.oneDish ? `<p class="note small">${tr("You cook once a day. Each day has one dish for both lunch and dinner; only the sides change. Here is today's cooking; the whole week is below.", "আপনি দিনে একবার রাঁধেন। প্রতিদিন দুপুর আর রাত দুই বেলাতেই একই পদ, শুধু সাথের জিনিস বদলায়। নিচে আজকের রান্না আর পুরো সপ্তাহ।")}</p>` : ""}${shown.map((s) => { const k = w.sessions.indexOf(s); return `<div class="card session">
         <div class="section-h"><h2 style="font-size:1.15rem">🍳 ${dayLabel(s.date)}${s.date === today() ? ` · ${tr("today", "আজ")}` : ""}</h2><span class="small muted num">${tr(`for ${s.span} day${s.span > 1 ? "s" : ""}`, `${N(s.span)} দিনের জন্য`)}</span></div>
         <ul class="cooklist">${s.dishes.map(({ r, portions }) => `<li><span class="tile ${TINT(r)}">${PIC(r.id)}</span><button class="link-plain" data-r="${r.id}" data-serv="${portions}"><b>${esc(r.name)}</b><small class="num">${tr(`${fmtBig(portions)} portions · ${r.kcal} kcal each`, `${N(portions)} জনের পরিমাণ · প্রতি জনে ${N(r.kcal)} ক্যালরি`)}${FISHY.has(r.id) ? tr(" · eat within 2 days", " · ২ দিনের মধ্যে খাবেন") : NO_FREEZE.has(r.id) ? tr(" · fridge only, 3 days", " · শুধু ফ্রিজে, ৩ দিন") : ""}</small></button></li>`).join("")}
           ${s.rotis ? `<li><span class="tile">🫓</span><span><b>${tr("Roti", "রুটি")}</b><small class="num">${tr(`${s.rotis} atta rotis in total; make fresh, or freeze cooked rotis and warm on a tawa`, `মোট ${N(s.rotis)}টি আটার রুটি; টাটকা বানান, অথবা বানিয়ে ফ্রিজারে রেখে তাওয়ায় গরম করুন`)}</small></span></li>` : ""}
           ${s.riceCups ? `<li><span class="tile">🍚</span><span><b>${tr("Rice", "ভাত")}</b><small class="num">${tr(`about ${fmtBig(s.riceCups)} cups cooked, or cook fresh rice each day (15 min)`, `প্রায় ${N(s.riceCups)} কাপ, অথবা রোজ টাটকা ভাত রাঁধুন (১৫ মিনিট)`)}</small></span></li>` : ""}</ul>
         <div class="row2"><button class="btn soft" data-shop="${k}">${inFamily() ? tr("Add to shopping", "বাজারে যোগ করুন") : tr("Shopping on WhatsApp", "WhatsApp-এ বাজার")}</button><button class="btn ghost" data-r="${s.dishes[0].r.id}" data-serv="${s.dishes[0].portions}">${tr("Start cooking", "রান্না শুরু")}</button></div>
-      </div>`).join("")}
+      </div>`; }).join("")}
       <div class="card"><div class="section-h"><h2 style="font-size:1.15rem">${tr("Your week", "আপনার সপ্তাহ")}</h2><button class="link" id="week-shuffle" style="min-height:0">↻ ${tr("Shuffle", "বদলে দিন")}</button></div>
         ${w.days.map((d) => `<details class="wday"${d.date === today() ? " open" : ""}><summary><b>${dayLabel(d.date)}${d.date === today() ? ` · ${tr("today", "আজ")}` : ""}</b><span class="small muted num">${fmtBig(d.total)} ${tr("kcal", "ক্যালরি")}</span></summary><ol class="pm-list">${d.meals.map(mealRow).join("")}</ol></details>`).join("")}
       </div>
@@ -129,12 +132,12 @@ function renderPrep(pb) {
   pb.innerHTML = `<div class="r-title"><p class="eyebrow">${tr("Cook once, eat for days", "একবার রেঁধে কয়েক দিন")}</p><h1>${tr("Week plan", "সপ্তাহের প্ল্যান")}</h1>
       <p class="muted">${tr("Pick how often you can cook. We plan dishes that keep well, enough for everyone until the next cooking day.", "কতবার রাঁধতে পারবেন বাছুন। এমন খাবার বাছা হবে যা ভালো থাকে, আর পরের রান্নার দিন পর্যন্ত সবার জন্য যথেষ্ট।")}</p></div>
     <div class="card dform">
-      <div class="drow col"><span class="dl">${tr("How often can you cook?", "কতবার রাঁধতে পারবেন?")}</span><div class="wrapchips">${[1, 2, 3, 4, 7].map((n) => chip("cook", n, freqLabel(n), cfg.cook)).join("")}</div></div>
-      <div class="drow col"><span class="dl">${tr("Main cooking day", "প্রধান রান্নার দিন")}</span><div class="wrapchips">${DAY_NAMES().map((nm, i) => chip("cookDay", i, nm, cfg.cookDay)).join("")}</div></div>
+      <div class="drow col"><span class="dl">${tr("How often can you cook?", "কতবার রাঁধতে পারবেন?")}</span><div class="wrapchips">${[8, 7, 1, 2, 3, 4].map((n) => chip("cook", n, freqLabel(n), cfg.cook)).join("")}</div></div>
+      <div class="drow col"${cfg.cook >= 7 ? " hidden" : ""}><span class="dl">${tr("Main cooking day", "প্রধান রান্নার দিন")}</span><div class="wrapchips">${DAY_NAMES().map((nm, i) => chip("cookDay", i, nm, cfg.cookDay)).join("")}</div></div>
       <div class="drow col"><span class="dl">${tr("People eating", "কতজন খাবেন")}</span><div class="wrapchips">${[1, 2, 3, 4, 5, 6].map((n) => chip("people", n, N(n), cfg.people)).join("")}</div></div>
     </div>
     ${body}`;
-  pb.querySelectorAll("[data-pk]").forEach((b) => (b.onclick = () => { saveDiet({ ...diet(), [b.dataset.pk]: +b.dataset.pv }); renderPrep(pb); renderHome(); }));
+  pb.querySelectorAll("[data-pk]").forEach((b) => (b.onclick = () => { saveDiet({ ...diet(), [b.dataset.pk]: +b.dataset.pv }); if (pb.closest("#s-plan")) renderPlanTab(); else renderPrep(pb); renderHome(); }));
   const ws = $("week-shuffle");
   if (ws) ws.onclick = () => { const w = buildWeek(), k = "week-seed-" + w.start; store.set(k, String((+store.get(k) || 0) + 1)); renderPrep(pb); renderHome(); };
   pb.querySelectorAll("[data-shop]").forEach((b) => (b.onclick = () => addSessionToShop(buildWeek().sessions[+b.dataset.shop])));
